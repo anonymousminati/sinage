@@ -1,0 +1,1791 @@
+
+> sinage_backend@1.0.0 dev
+> nodemon server.js
+
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+(node:30556) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-01.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-01.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:34:31 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:34:31 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 30556,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98529280,
+      "heapTotal": 67289088,
+      "heapUsed": 30493592,
+      "external": 20751172,
+      "arrayBuffers": 18290113
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 86332.75
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:34:31 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+(node:27760) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-01.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-01.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:34:56 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:34:56 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 27760,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 97792000,
+      "heapTotal": 67026944,
+      "heapUsed": 30281880,
+      "external": 20744196,
+      "arrayBuffers": 18287393
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 86357.64
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:34:56 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+(node:36876) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-02.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-02.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:35:24 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:35:24 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 36876,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98656256,
+      "heapTotal": 67026944,
+      "heapUsed": 30319016,
+      "external": 20744364,
+      "arrayBuffers": 18287561
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 86385.14
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:35:24 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: 📡 auto-backup env with Radar: https://dotenvx.com/radar
+(node:4412) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-02.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-02.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:35:59 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:35:59 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 4412,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98394112,
+      "heapTotal": 67026944,
+      "heapUsed": 30557504,
+      "external": 20751240,
+      "arrayBuffers": 18290181
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 86420.734
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:35:59 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+(node:8940) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-02.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-02.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:38:48 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:38:48 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 8940,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98754560,
+      "heapTotal": 67551232,
+      "heapUsed": 30610256,
+      "external": 20758072,
+      "arrayBuffers": 18292757
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 86589.75
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:38:48 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+(node:35092) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-02.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-02.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:38:55 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:38:55 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 35092,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98631680,
+      "heapTotal": 66764800,
+      "heapUsed": 30532136,
+      "external": 20751240,
+      "arrayBuffers": 18290181
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 86596.281
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:38:55 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+(node:22764) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-02.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-02.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:42:18 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:42:18 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 22764,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98705408,
+      "heapTotal": 67289088,
+      "heapUsed": 29578080,
+      "external": 20741849,
+      "arrayBuffers": 18285046
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 86799.515
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:42:18 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+(node:29860) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-00.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-00.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:43:35 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:43:35 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 29860,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98603008,
+      "heapTotal": 67026944,
+      "heapUsed": 30473264,
+      "external": 20751240,
+      "arrayBuffers": 18290181
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 86876.312
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:43:35 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: ⚙️  override existing env vars with { override: true }
+(node:36100) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-00.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-00.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:44:16 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:44:16 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 36100,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98787328,
+      "heapTotal": 67026944,
+      "heapUsed": 30441360,
+      "external": 20751240,
+      "arrayBuffers": 18290181
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 86917.906
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:44:16 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+(node:38620) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 exit listeners added to [Bus]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+[dotenv@17.2.1] injecting env (21) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+(node:38612) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-01.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-01.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:44:51 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:44:51 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 38612,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98996224,
+      "heapTotal": 67026944,
+      "heapUsed": 30324384,
+      "external": 20744364,
+      "arrayBuffers": 18287561
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 86952.39
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:44:51 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+(node:34392) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-00.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-00.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:45:14 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:45:14 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 34392,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 99332096,
+      "heapTotal": 67289088,
+      "heapUsed": 30065752,
+      "external": 20743957,
+      "arrayBuffers": 18287154
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 86975.203
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:45:14 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: 📡 observe env with Radar: https://dotenvx.com/radar
+(node:27936) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-02.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-02.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:45:55 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:45:55 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 27936,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98791424,
+      "heapTotal": 67289088,
+      "heapUsed": 30465600,
+      "external": 20745590,
+      "arrayBuffers": 18288787
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 87016.515
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:45:55 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: ⚙️  override existing env vars with { override: true }
+(node:33736) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-02.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-02.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:46:16 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:46:16 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 33736,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98770944,
+      "heapTotal": 66764800,
+      "heapUsed": 30478944,
+      "external": 20751172,
+      "arrayBuffers": 18290113
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 87037.687
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:46:16 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: 📡 auto-backup env with Radar: https://dotenvx.com/radar
+(node:32288) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-00.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-00.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:46:36 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:46:36 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 32288,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98705408,
+      "heapTotal": 67289088,
+      "heapUsed": 30757920,
+      "external": 20770569,
+      "arrayBuffers": 18296742
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 87057.546
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:46:36 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+(node:7480) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-01.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-01.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:47:38 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:47:38 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 7480,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98254848,
+      "heapTotal": 67289088,
+      "heapUsed": 30417856,
+      "external": 20751172,
+      "arrayBuffers": 18290113
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 87119.578
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:47:38 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+(node:31568) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-00.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-00.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:48:08 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:48:08 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 31568,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 99323904,
+      "heapTotal": 67551232,
+      "heapUsed": 30430208,
+      "external": 20751172,
+      "arrayBuffers": 18290113
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 87149.671
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:48:08 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: 📡 version env with Radar: https://dotenvx.com/radar
+(node:39220) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-02.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-02.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:48:32 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:48:32 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 39220,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 98766848,
+      "heapTotal": 67289088,
+      "heapUsed": 30590456,
+      "external": 20753502,
+      "arrayBuffers": 18292443
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 87173.25
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:48:32 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.1] injecting env (21) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+(node:23376) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"database","host":"ac-desky4w-shard-00-01.uzvnbo6.mongodb.net","port":27017,"database":"Comdata-SINAGE","level":"info","message":"MongoDB Connected: ac-desky4w-shard-00-01.uzvnbo6.mongodb.net"}
+[winston] Attempt to write logs with no transports, which can increase memory usage: {"service":"cloudinary","status":"ok","level":"info","message":"Cloudinary connection verified successfully"}
+2025-08-02 09:48:45 [[31merror[39m]: [31muncaughtException: listen EADDRINUSE: address already in use :::5000[39m
+[31mError: listen EADDRINUSE: address already in use :::5000[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1940:16)[39m
+[31m    at listenInCluster (node:net:1997:12)[39m
+[31m    at Server.listen (node:net:2102:7)[39m
+[31m    at startServer (D:\Sinage manual 1\backend\server.js:465:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  "error": {
+    "code": "EADDRINUSE",
+    "errno": -4091,
+    "syscall": "listen",
+    "address": "::",
+    "port": 5000
+  },
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "exception": true,
+  "date": "Sat Aug 02 2025 09:48:45 GMT+0530 (India Standard Time)",
+  "process": {
+    "pid": 23376,
+    "uid": null,
+    "gid": null,
+    "cwd": "D:\\Sinage manual 1\\backend",
+    "execPath": "C:\\Program Files\\nodejs\\node.exe",
+    "version": "v22.17.0",
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\Sinage manual 1\\backend\\server.js"
+    ],
+    "memoryUsage": {
+      "rss": 99377152,
+      "heapTotal": 67289088,
+      "heapUsed": 30367816,
+      "external": 20745551,
+      "arrayBuffers": 18288748
+    }
+  },
+  "os": {
+    "loadavg": [
+      0,
+      0,
+      0
+    ],
+    "uptime": 87186.968
+  },
+  "trace": [
+    {
+      "column": 16,
+      "file": "node:net",
+      "function": "Server.setupListenHandle [as _listen2]",
+      "line": 1940,
+      "method": "setupListenHandle [as _listen2]",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "node:net",
+      "function": "listenInCluster",
+      "line": 1997,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 7,
+      "file": "node:net",
+      "function": "Server.listen",
+      "line": 2102,
+      "method": "listen",
+      "native": false
+    },
+    {
+      "column": 12,
+      "file": "D:\\Sinage manual 1\\backend\\server.js",
+      "function": "startServer",
+      "line": 465,
+      "method": null,
+      "native": false
+    },
+    {
+      "column": 5,
+      "file": "node:internal/process/task_queues",
+      "function": "process.processTicksAndRejections",
+      "line": 105,
+      "method": "processTicksAndRejections",
+      "native": false
+    }
+  ]
+}
+2025-08-02 09:48:45 [[31merror[39m] [process]: [31mUncaught Exception:[39m {
+  "error": "listen EADDRINUSE: address already in use :::5000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::5000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (D:\\Sinage manual 1\\backend\\server.js:465:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
