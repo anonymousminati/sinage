@@ -1,13 +1,14 @@
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { Monitor, Home, Settings, Shield, Images, ListVideo, Activity } from "lucide-react";
+import { Monitor, Home, Settings, Shield, Images, ListVideo, Activity, LogOut } from "lucide-react";
 
 interface NavigationProps {
   currentPage: string;
   onPageChange: (page: string) => void;
+  onLogout?: () => void;
 }
 
-export function Navigation({ currentPage, onPageChange }: NavigationProps) {
+export function Navigation({ currentPage, onPageChange, onLogout }: NavigationProps) {
   const navItems = [
     {
       id: "dashboard",
@@ -83,6 +84,19 @@ export function Navigation({ currentPage, onPageChange }: NavigationProps) {
                 </Button>
               );
             })}
+            
+            {/* Logout Button */}
+            {onLogout && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onLogout}
+                className="flex items-center gap-2 text-muted-foreground hover:text-destructive"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            )}
           </div>
         </div>
       </div>
