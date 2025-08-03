@@ -39,20 +39,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /**
  * Token storage utilities
- * Using memory storage for security - tokens are lost on page refresh
- * In production, consider httpOnly cookies for better security
+ * Uses localStorage for persistent login credentials across browser sessions
  */
 class TokenStorage {
   private static token: string | null = null;
+  private static readonly TOKEN_KEY = 'auth_token';
+  private static readonly USER_KEY = 'auth_user';
 
   static setToken(token: string): void {
     this.token = token;
-    // Store in sessionStorage as backup for page refreshes
-    // Note: In production, prefer httpOnly cookies
     try {
-      sessionStorage.setItem('auth_token', token);
+      localStorage.setItem(this.TOKEN_KEY, token);
     } catch (error) {
-      console.warn('Failed to store token in sessionStorage:', error);
+      console.warn('Failed to store token in localStorage:', error);
     }
   }
 
@@ -61,15 +60,14 @@ class TokenStorage {
       return this.token;
     }
     
-    // Try to recover from sessionStorage
     try {
-      const storedToken = sessionStorage.getItem('auth_token');
+      const storedToken = localStorage.getItem(this.TOKEN_KEY);
       if (storedToken) {
         this.token = storedToken;
         return storedToken;
       }
     } catch (error) {
-      console.warn('Failed to retrieve token from sessionStorage:', error);
+      console.warn('Failed to retrieve token from localStorage:', error);
     }
     
     return null;
@@ -78,10 +76,32 @@ class TokenStorage {
   static clearToken(): void {
     this.token = null;
     try {
-      sessionStorage.removeItem('auth_token');
+      localStorage.removeItem(this.TOKEN_KEY);
+      localStorage.removeItem(this.USER_KEY);
     } catch (error) {
-      console.warn('Failed to clear token from sessionStorage:', error);
+      console.warn('Failed to clear token from localStorage:', error);
     }
+  }
+
+  static setUser(user: User): void {
+    try {
+      localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+    } catch (error) {
+      console.warn('Failed to store user in localStorage:', error);
+    }
+  }
+
+  static getUser(): User | null {
+    try {
+      const storedUser = localStorage.getItem(this.USER_KEY);
+      if (storedUser) {
+        return JSON.parse(storedUser);
+      }
+    } catch (error) {
+      console.warn('Failed to retrieve user from localStorage:', error);
+    }
+    
+    return null;
   }
 }
 
@@ -103,6 +123,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const initAuth = async () => {
       const token = TokenStorage.getToken();
+      const storedUser = TokenStorage.getUser();
       
       if (!token) {
         setAuthState(prev => ({ ...prev, isLoading: false }));
@@ -110,7 +131,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       try {
-        // Validate token by fetching user profile
+        // If we have stored user data, use it while validating token
+        if (storedUser) {
+          setAuthState({
+            user: storedUser,
+            token,
+            isLoading: false,
+            isAuthenticated: true,
+          });
+        }
+        
+        // Validate token by fetching fresh user profile
         const response = await getProfile(token);
         setAuthState({
           user: response.data.user,
@@ -118,8 +149,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           isLoading: false,
           isAuthenticated: true,
         });
+        
+        // Update stored user data with fresh data
+        TokenStorage.setUser(response.data.user);
       } catch (error) {
-        // Token is invalid, clear it
+        // Token is invalid, clear everything
         TokenStorage.clearToken();
         setAuthState({
           user: null,
@@ -147,6 +181,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const { user, tokens } = response.data;
         
         TokenStorage.setToken(tokens.accessToken);
+        TokenStorage.setUser(user);
         
         setAuthState({
           user,
