@@ -3,9 +3,10 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "./ui/card";
-import { Alert, AlertDescription } from "./ui/alert";
 import { Loader2, Eye, EyeOff, Mail, Lock, LogIn } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface LoginData {
   email: string;
@@ -15,7 +16,6 @@ interface LoginData {
 interface ValidationErrors {
   email?: string;
   password?: string;
-  general?: string;
 }
 
 interface LoginProps {
@@ -24,6 +24,7 @@ interface LoginProps {
 
 export function Login({ onSwitchToRegister }: LoginProps) {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<LoginData>({
     email: "",
     password: "",
@@ -107,24 +108,27 @@ export function Login({ onSwitchToRegister }: LoginProps) {
       });
 
       if (result.success) {
-        // Login successful - AuthContext will handle state updates
-        // and App.tsx will automatically redirect to dashboard
+        // Login successful - show success toast and navigate to dashboard
+        toast.success("Login successful! Welcome back.");
+        navigate("/dashboard");
       } else {
         // Handle login errors
         if (result.validationErrors) {
-          // Backend validation errors
+          // Backend validation errors (form field errors)
           setErrors(result.validationErrors);
         } else {
-          // General error (including wrong credentials)
-          setErrors({
-            general: result.error || "Login failed. Please check your credentials and try again.",
+          // Wrong credentials or other login errors - show toast
+          const errorMessage = result.error || "Invalid email or password";
+          toast.error(errorMessage, {
+            duration: 2000,
+            description: "Please check your credentials and try again.",
           });
         }
       }
     } catch (error) {
       console.error("Login error:", error);
-      setErrors({
-        general: "An unexpected error occurred. Please try again.",
+      toast.error("An unexpected error occurred. Please try again.", {
+        duration: 2000,
       });
     } finally {
       setIsLoading(false);
@@ -158,13 +162,6 @@ export function Login({ onSwitchToRegister }: LoginProps) {
           
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* General Error */}
-              {errors.general && (
-                <Alert variant="destructive">
-                  <AlertDescription>{errors.general}</AlertDescription>
-                </Alert>
-              )}
-
               {/* Email Field */}
               <div className="space-y-2">
                 <Label htmlFor="email">
