@@ -9,7 +9,6 @@ import { MediaFilters } from "./MediaFilters";
 import { MediaGrid } from "./MediaGrid";
 import { MediaUpload } from "./MediaUpload";
 import { MediaPreviewModal } from "./MediaPreviewModal";
-import { ImageDurationModal } from "./ImageDurationModal";
 import { 
   Upload, 
   AlertTriangle,
@@ -42,7 +41,6 @@ export function MediaLibrary() {
   // Local UI state
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showUpload, setShowUpload] = useState(false);
-  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
 
   // Initialize data on component mount
   useEffect(() => {
@@ -51,41 +49,15 @@ export function MediaLibrary() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run on mount
 
-  // Handle file upload
+  // Handle file upload completion (called after MediaUpload finishes)
   const handleFileUpload = async (files: File[]) => {
-    for (const file of files) {
-      if (file.type.startsWith('image/')) {
-        // For images, prompt for duration first
-        setPendingImageFile(file);
-      } else {
-        // For videos, upload directly
-        try {
-          await actions.uploadMedia(file);
-          toast.success(`Uploaded ${file.name} successfully`);
-        } catch (error) {
-          toast.error(`Failed to upload ${file.name}`);
-        }
-      }
-    }
+    // Files are already uploaded by MediaUpload component
+    // Just close the modal and refresh the media list
     setShowUpload(false);
+    actions.fetchMedia(); // Refresh to show newly uploaded media
   };
 
-  // Handle image duration setting
-  const handleImageDurationSet = async (duration: number, tags?: string, description?: string) => {
-    if (pendingImageFile) {
-      try {
-        await actions.uploadMedia(pendingImageFile, {
-          duration,
-          tags,
-          description
-        });
-        toast.success(`Uploaded ${pendingImageFile.name} successfully`);
-      } catch (error) {
-        toast.error(`Failed to upload ${pendingImageFile.name}`);
-      }
-      setPendingImageFile(null);
-    }
-  };
+  // Image duration setting is now handled within MediaUpload component
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -117,7 +89,7 @@ export function MediaLibrary() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={clearError}
+              onClick={actions.clearError}
               className="h-6 w-6 p-0 ml-2"
             >
               <X className="h-3 w-3" />
@@ -224,15 +196,7 @@ export function MediaLibrary() {
         onClose={() => actions.setSelectedMedia(null)}
       />
 
-      {/* Image Duration Modal */}
-      <ImageDurationModal
-        file={pendingImageFile}
-        isOpen={!!pendingImageFile}
-        onClose={() => {
-          setPendingImageFile(null);
-        }}
-        onConfirm={handleImageDurationSet}
-      />
+      {/* Image duration is now handled within MediaUpload component */}
     </div>
   );
 }

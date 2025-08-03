@@ -209,7 +209,10 @@ const uploadImage = (buffer, options = {}) => {
               bytes: result.bytes,
               etag: result.etag,
               placeholder: result.placeholder || false,
-              colors: result.colors || [],
+              colors: result.colors ? result.colors.map(colorData => ({
+                color: Array.isArray(colorData) ? colorData[0] : colorData,
+                percentage: Array.isArray(colorData) ? colorData[1] : 0
+              })) : [],
               predominant: {
                 background: result.predominant?.background,
                 foreground: result.predominant?.foreground
@@ -312,7 +315,10 @@ const uploadVideo = (buffer, options = {}) => {
               bytes: result.bytes,
               etag: result.etag,
               placeholder: result.placeholder || false,
-              colors: result.colors || [],
+              colors: result.colors ? result.colors.map(colorData => ({
+                color: Array.isArray(colorData) ? colorData[0] : colorData,
+                percentage: Array.isArray(colorData) ? colorData[1] : 0
+              })) : [],
               predominant: {
                 background: result.predominant?.background,
                 foreground: result.predominant?.foreground
@@ -449,7 +455,8 @@ const createMediaModelData = (cloudinaryResult, originalName, userId, additional
   if (mediaType === 'image') {
     baseData.duration = additionalData.duration || 10; // Default 10 seconds for images
   } else if (mediaType === 'video') {
-    baseData.videoDuration = cloudinaryResult.videoDuration || cloudinaryResult.duration;
+    // For videos, use the duration from Cloudinary (video file metadata)
+    baseData.videoDuration = cloudinaryResult.videoDuration || cloudinaryResult.duration || 30;
   }
 
   // Add optional fields
@@ -697,7 +704,10 @@ const getFileDetails = async (publicId, resourceType = 'image') => {
         bytes: result.bytes,
         etag: result.etag,
         placeholder: result.placeholder || false,
-        colors: result.colors || [],
+        colors: result.colors ? result.colors.map(colorData => ({
+          color: Array.isArray(colorData) ? colorData[0] : colorData,
+          percentage: Array.isArray(colorData) ? colorData[1] : 0
+        })) : [],
         predominant: {
           background: result.predominant?.background,
           foreground: result.predominant?.foreground

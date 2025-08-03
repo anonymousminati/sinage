@@ -204,7 +204,10 @@ const mediaSchema = new mongoose.Schema({
     bytes: Number,
     etag: String,
     placeholder: Boolean,
-    colors: [String],
+    colors: [{
+      color: String,
+      percentage: Number
+    }],
     predominant: {
       background: String,
       foreground: String

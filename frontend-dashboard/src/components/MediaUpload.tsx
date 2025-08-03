@@ -199,15 +199,28 @@ const generatePreview = async (file: File): Promise<string | undefined> => {
 const extractDimensions = async (file: File): Promise<{ width: number; height: number } | undefined> => {
   return new Promise((resolve) => {
     if (acceptedTypes.image.includes(file.type)) {
-      const img = new Image();
-      img.onload = () => resolve({ width: img.width, height: img.height });
-      img.onerror = () => resolve(undefined);
+      const img = document.createElement('img');
+      img.onload = () => {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        URL.revokeObjectURL(img.src); // Clean up object URL
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src); // Clean up object URL
+        resolve(undefined);
+      };
       img.src = URL.createObjectURL(file);
     } else if (acceptedTypes.video.includes(file.type)) {
       const video = document.createElement('video');
-      video.onloadedmetadata = () => resolve({ width: video.videoWidth, height: video.videoHeight });
-      video.onerror = () => resolve(undefined);
+      video.onloadedmetadata = () => {
+        resolve({ width: video.videoWidth, height: video.videoHeight });
+        URL.revokeObjectURL(video.src); // Clean up object URL
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src); // Clean up object URL
+        resolve(undefined);
+      };
       video.src = URL.createObjectURL(file);
+      video.load();
     } else {
       resolve(undefined);
     }

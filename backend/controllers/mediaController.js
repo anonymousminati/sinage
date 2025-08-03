@@ -100,12 +100,23 @@ const uploadMedia = async (req, res) => {
       userId: req.user.id
     });
 
+    // Determine file type
+    const isImage = mimetype.startsWith('image/');
+    const isVideo = mimetype.startsWith('video/');
+    
     // Prepare media data for upload
     const mediaData = {
-      duration: duration,
       tags: tags ? tags.split(',').map(tag => tag.trim().toLowerCase()) : [],
       description: description || ''
     };
+    
+    // Add duration based on file type
+    if (isImage) {
+      mediaData.duration = duration || 10; // Default 10 seconds for images
+    } else if (isVideo) {
+      // For videos, duration will come from Cloudinary metadata
+      // We don't set it here as it will be extracted from the video file
+    }
 
     // Upload to Cloudinary and prepare for Media model
     const uploadResult = await uploadFileForMediaModel(
@@ -117,6 +128,14 @@ const uploadMedia = async (req, res) => {
     );
 
     // Create Media document
+    winston.info('Creating Media document with data:', {
+      service: 'media',
+      uploadResultType: uploadResult.type,
+      uploadResultDuration: uploadResult.duration,
+      uploadResultVideoDuration: uploadResult.videoDuration,
+      userId: req.user.id
+    });
+    
     const media = new Media(uploadResult);
     await media.save();
 
