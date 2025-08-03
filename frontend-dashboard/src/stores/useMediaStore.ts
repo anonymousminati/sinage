@@ -98,7 +98,7 @@ const defaultFilters: MediaFilters = {
   search: '',
   sortBy: 'date',
   sortOrder: 'desc',
-  tags: '',
+  tags: undefined,
 };
 
 const defaultPagination: MediaPagination = {
@@ -147,8 +147,8 @@ export const useMediaStore = create<MediaStore>()(
       fetchMedia: async (params = {}) => {
         const state = get();
         
-        // Check cache validity
-        if (state.lastFetch && Date.now() - state.lastFetch < state.cacheTimeout && Object.keys(params).length === 0) {
+        // Check cache validity - only if no params and cache is valid
+        if (state.lastFetch && Date.now() - state.lastFetch < state.cacheTimeout && Object.keys(params).length === 0 && state.lastFetch > 0) {
           return;
         }
 
@@ -393,6 +393,7 @@ export const useMediaStore = create<MediaStore>()(
           return {
             filters: updatedFilters,
             pagination: { ...state.pagination, page: 1 }, // Reset to first page
+            lastFetch: 0, // Invalidate cache to force fetch
           };
         });
         
@@ -404,6 +405,7 @@ export const useMediaStore = create<MediaStore>()(
         set((state) => ({
           filters: { ...state.filters, sortBy, sortOrder },
           pagination: { ...state.pagination, page: 1 },
+          lastFetch: 0, // Invalidate cache to force fetch
         }));
         
         get().fetchMedia();
@@ -414,6 +416,7 @@ export const useMediaStore = create<MediaStore>()(
           filters: defaultFilters,
           pagination: { ...defaultPagination },
           searchValue: '',
+          lastFetch: 0, // Invalidate cache to force fetch
         });
         
         get().fetchMedia();
@@ -435,6 +438,7 @@ export const useMediaStore = create<MediaStore>()(
             filters: { ...state.filters, search },
             pagination: { ...state.pagination, page: 1 },
             searchDebounceTimer: null,
+            lastFetch: 0, // Invalidate cache to force fetch
           }));
           
           get().fetchMedia();
@@ -475,6 +479,14 @@ export const useMediaStore = create<MediaStore>()(
         }));
         
         get().fetchMedia({ page });
+      },
+
+      setLimit: (limit) => {
+        set((state) => ({
+          pagination: { ...state.pagination, limit, page: 1 }, // Reset to first page
+        }));
+        
+        get().fetchMedia({ page: 1, limit });
       },
 
       nextPage: () => {
@@ -549,7 +561,12 @@ export const useMediaActions = () => {
       STABLE_ACTIONS.fetchStats !== state.fetchStats ||
       STABLE_ACTIONS.setSelectedMedia !== state.setSelectedMedia ||
       STABLE_ACTIONS.clearError !== state.clearError ||
-      STABLE_ACTIONS.invalidateCache !== state.invalidateCache
+      STABLE_ACTIONS.invalidateCache !== state.invalidateCache ||
+      STABLE_ACTIONS.setSearch !== state.setSearch ||
+      STABLE_ACTIONS.setFilters !== state.setFilters ||
+      STABLE_ACTIONS.clearFilters !== state.clearFilters ||
+      STABLE_ACTIONS.setPage !== state.setPage ||
+      STABLE_ACTIONS.setLimit !== state.setLimit
     ) {
       STABLE_ACTIONS.fetchMedia = state.fetchMedia;
       STABLE_ACTIONS.uploadMedia = state.uploadMedia;
@@ -560,6 +577,11 @@ export const useMediaActions = () => {
       STABLE_ACTIONS.setSelectedMedia = state.setSelectedMedia;
       STABLE_ACTIONS.clearError = state.clearError;
       STABLE_ACTIONS.invalidateCache = state.invalidateCache;
+      STABLE_ACTIONS.setSearch = state.setSearch;
+      STABLE_ACTIONS.setFilters = state.setFilters;
+      STABLE_ACTIONS.clearFilters = state.clearFilters;
+      STABLE_ACTIONS.setPage = state.setPage;
+      STABLE_ACTIONS.setLimit = state.setLimit;
     }
     return STABLE_ACTIONS;
   });
@@ -578,7 +600,9 @@ export const useMediaWithPagination = () => {
 export const useSearchState = () => {
   const searchValue = useMediaStore((state) => state.searchValue);
   const filters = useMediaStore((state) => state.filters);
-  const { setSearch, setFilters, clearFilters } = useMediaActions();
+  const setSearch = useMediaStore((state) => state.setSearch);
+  const setFilters = useMediaStore((state) => state.setFilters);
+  const clearFilters = useMediaStore((state) => state.clearFilters);
   
   return { searchValue, filters, setSearch, setFilters, clearFilters };
 };

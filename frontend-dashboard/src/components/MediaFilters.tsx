@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { 
   Search, 
   Filter, 
@@ -12,9 +13,14 @@ import {
   SortDesc,
   Grid,
   List,
-  RefreshCw
+  RefreshCw,
+  Calendar,
+  Tag,
+  FileImage,
+  FileVideo,
+  Clock
 } from "lucide-react";
-import { useSearchState, useMediaPagination, useMediaActions } from "../stores/useMediaStore";
+import { useSearchState, useMediaPagination, useMediaActions, useMediaItems } from "../stores/useMediaStore";
 import type { MediaFilters as MediaFiltersType } from "../types";
 
 /**
@@ -34,15 +40,20 @@ export function MediaFilters({ viewMode, onViewModeChange, resultCount }: MediaF
   const { searchValue, filters, setSearch, setFilters, clearFilters } = useSearchState();
   const pagination = useMediaPagination();
   const { fetchMedia, invalidateCache } = useMediaActions();
+  const mediaItems = useMediaItems();
   
   // Local state for immediate UI updates
   const [localSearchValue, setLocalSearchValue] = useState(searchValue);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Sync local search with store search
-  useEffect(() => {
-    setLocalSearchValue(searchValue);
-  }, [searchValue]);
+  
+  // Extract available tags from all media items
+  const availableTags = Array.from(
+    new Set(
+      mediaItems
+        .flatMap(item => item.tags || [])
+        .filter(tag => tag && tag.trim())
+    )
+  ).sort();
 
   // Handle search input with immediate UI feedback
   const handleSearchChange = (value: string) => {
@@ -83,6 +94,54 @@ export function MediaFilters({ viewMode, onViewModeChange, resultCount }: MediaF
     clearFilters();
   };
 
+  // Sync local search with store search
+  useEffect(() => {
+    setLocalSearchValue(searchValue);
+  }, [searchValue]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only trigger if not typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Ctrl/Cmd + K to focus search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[placeholder*="Search media"]') as HTMLInputElement;
+        searchInput?.focus();
+        return;
+      }
+
+      // Quick filter shortcuts
+      if (e.altKey) {
+        e.preventDefault();
+        switch (e.key) {
+          case '1':
+            handleTypeFilter("all");
+            break;
+          case '2':
+            handleTypeFilter("image");
+            break;
+          case '3':
+            handleTypeFilter("video");
+            break;
+          case 'c':
+            handleClearFilters();
+            break;
+          case 'r':
+            handleRefresh();
+            break;
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleTypeFilter, handleClearFilters, handleRefresh]);
+
   // Check if any filters are active
   const hasActiveFilters = 
     filters.search || 
@@ -99,11 +158,14 @@ export function MediaFilters({ viewMode, onViewModeChange, resultCount }: MediaF
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search media files by name, tags..."
+              placeholder="Search media files by name, tags... (Ctrl+K)"
               value={localSearchValue}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-9 pr-10"
+              className="pl-9 pr-20"
             />
+            <div className="absolute right-8 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground hidden sm:block">
+              ⌘K
+            </div>
             {localSearchValue && (
               <Button
                 variant="ghost"
@@ -114,6 +176,52 @@ export function MediaFilters({ viewMode, onViewModeChange, resultCount }: MediaF
                 <X className="h-3 w-3" />
               </Button>
             )}
+          </div>
+
+          {/* Quick Filter Buttons */}
+          <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b">
+            <Button
+              variant={!filters.type ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTypeFilter("all")}
+              className="gap-1"
+              title="Show all files (Alt+1)"
+            >
+              <Filter className="h-3 w-3" />
+              All Files
+              <span className="hidden lg:inline text-xs text-muted-foreground ml-1">Alt+1</span>
+            </Button>
+            <Button
+              variant={filters.type === "image" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTypeFilter("image")}
+              className="gap-1"
+              title="Show images only (Alt+2)"
+            >
+              <FileImage className="h-3 w-3" />
+              Images Only
+              <span className="hidden lg:inline text-xs text-muted-foreground ml-1">Alt+2</span>
+            </Button>
+            <Button
+              variant={filters.type === "video" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTypeFilter("video")}
+              className="gap-1"
+              title="Show videos only (Alt+3)"
+            >
+              <FileVideo className="h-3 w-3" />
+              Videos Only
+              <span className="hidden lg:inline text-xs text-muted-foreground ml-1">Alt+3</span>
+            </Button>
+            <Button
+              variant={filters.sortBy === "usage" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleSortChange("usage")}
+              className="gap-1"
+            >
+              <Clock className="h-3 w-3" />
+              Most Used
+            </Button>
           </div>
 
           {/* Filter Controls */}
@@ -166,12 +274,63 @@ export function MediaFilters({ viewMode, onViewModeChange, resultCount }: MediaF
               </Button>
 
               {/* Tags Filter */}
-              <Input
-                placeholder="Filter by tags..."
-                value={filters.tags || ""}
-                onChange={(e) => handleTagsFilter(e.target.value)}
-                className="w-32"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 min-w-32 justify-start"
+                  >
+                    <Tag className="h-3 w-3" />
+                    {filters.tags ? (
+                      <span className="truncate">{filters.tags}</span>
+                    ) : (
+                      "Filter by tags"
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3">
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm">Filter by Tags</h4>
+                    
+                    {/* Manual tag input */}
+                    <Input
+                      placeholder="Type tag name..."
+                      value={filters.tags || ""}
+                      onChange={(e) => handleTagsFilter(e.target.value)}
+                      className="text-sm"
+                    />
+                    
+                    {/* Available tags */}
+                    {availableTags.length > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Available tags ({availableTags.length}):
+                        </p>
+                        <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
+                          {availableTags.map((tag) => (
+                            <Button
+                              key={tag}
+                              variant={filters.tags === tag ? "default" : "outline"}
+                              size="sm"
+                              className="text-xs h-6 px-2"
+                              onClick={() => handleTagsFilter(filters.tags === tag ? "" : tag)}
+                            >
+                              {tag}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {availableTags.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        No tags found in current media
+                      </p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
 
               {/* Clear Filters */}
               {hasActiveFilters && (
@@ -180,9 +339,11 @@ export function MediaFilters({ viewMode, onViewModeChange, resultCount }: MediaF
                   size="sm"
                   onClick={handleClearFilters}
                   className="gap-1"
+                  title="Clear all filters (Alt+C)"
                 >
                   <X className="h-3 w-3" />
                   Clear
+                  <span className="hidden lg:inline text-xs text-muted-foreground ml-1">Alt+C</span>
                 </Button>
               )}
 
@@ -193,9 +354,11 @@ export function MediaFilters({ viewMode, onViewModeChange, resultCount }: MediaF
                 onClick={handleRefresh}
                 disabled={isRefreshing}
                 className="gap-1"
+                title="Refresh media library (Alt+R)"
               >
                 <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
                 Refresh
+                <span className="hidden lg:inline text-xs text-muted-foreground ml-1">Alt+R</span>
               </Button>
             </div>
 

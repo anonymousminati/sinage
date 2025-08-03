@@ -70,11 +70,11 @@ export interface MediaPagination {
 }
 
 export interface MediaFilters {
-  type: 'all' | 'image' | 'video';
+  type?: 'image' | 'video' | '';
   search: string;
-  tags: string;
-  sortBy: 'createdAt' | 'name' | 'fileSize' | 'usageCount';
+  sortBy: 'date' | 'name' | 'size' | 'usage';
   sortOrder: 'asc' | 'desc';
+  tags?: string;
 }
 
 export type {

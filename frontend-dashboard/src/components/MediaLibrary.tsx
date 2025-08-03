@@ -9,6 +9,7 @@ import { MediaFilters } from "./MediaFilters";
 import { MediaGrid } from "./MediaGrid";
 import { MediaUpload } from "./MediaUpload";
 import { MediaPreviewModal } from "./MediaPreviewModal";
+import { MediaPagination } from "./MediaPagination";
 import { 
   Upload, 
   AlertTriangle,
@@ -181,6 +182,9 @@ export function MediaLibrary() {
         viewMode={viewMode}
         onPreview={actions.setSelectedMedia}
       />
+
+      {/* Pagination */}
+      <MediaPagination />
 
       {/* Upload Modal */}
       <MediaUpload
