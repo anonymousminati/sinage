@@ -3,10 +3,12 @@ const rateLimit = require('express-rate-limit');
 const { verifyJWT, requireAuth } = require('../middleware/authMiddleware');
 const {
   upload,
-  uploadSingleMedia,
-  uploadMultipleMedia,
+  uploadMedia,
+  getMedia,
+  updateMedia,
   deleteMedia,
-  getMediaDetails,
+  generateDownloadUrl,
+  getMediaStats,
   createVideoThumbnail,
   handleMulterError
 } = require('../controllers/mediaController');
@@ -39,63 +41,78 @@ router.use(requireAuth);
 
 /**
  * @route   POST /api/media/upload
- * @desc    Upload single media file (image or video)
+ * @desc    Upload single media file with metadata handling
  * @access  Private
  * @body    {file} file - Media file to upload
- * @body    {string} [duration] - Display duration for images (in seconds)
+ * @body    {number} [duration] - Display duration for images (1-300 seconds)
  * @body    {string} [tags] - Comma-separated tags
- * @body    {string} [description] - File description
+ * @body    {string} [description] - File description (max 500 chars)
  */
 router.post('/upload', 
   uploadRateLimit,
   upload.single('file'),
-  uploadSingleMedia,
+  uploadMedia,
   handleMulterError
 );
 
 /**
- * @route   POST /api/media/upload/multiple
- * @desc    Upload multiple media files
+ * @route   GET /api/media
+ * @desc    Get user's media with advanced filtering and pagination
  * @access  Private
- * @body    {file[]} files - Array of media files to upload
- * @body    {string} [tags] - Comma-separated tags for all files
- * @body    {string} [description] - Description for all files
+ * @query   {number} [page=1] - Page number
+ * @query   {number} [limit=20] - Items per page (max 100)
+ * @query   {string} [type] - Filter by type (image/video)
+ * @query   {string} [search] - Search in name, description, tags
+ * @query   {string} [sort=date] - Sort by (date/name/size/usage)
+ * @query   {string} [order=desc] - Sort order (asc/desc)
+ * @query   {string} [tags] - Filter by comma-separated tags
  */
-router.post('/upload/multiple',
-  uploadRateLimit,
-  upload.array('files', 10), // Max 10 files
-  uploadMultipleMedia,
-  handleMulterError
-);
+router.get('/', getMedia);
 
 /**
- * @route   GET /api/media/:publicId
- * @desc    Get media file details from Cloudinary
+ * @route   GET /api/media/stats
+ * @desc    Get user media statistics and analytics
  * @access  Private
- * @param   {string} publicId - Cloudinary public ID
- * @query   {string} [resourceType=image] - Resource type (image or video)
  */
-router.get('/:publicId', getMediaDetails);
+router.get('/stats', getMediaStats);
 
 /**
- * @route   DELETE /api/media/:publicId
- * @desc    Delete media file from Cloudinary
+ * @route   PUT /api/media/:id
+ * @desc    Update media metadata
  * @access  Private
- * @param   {string} publicId - Cloudinary public ID
- * @query   {string} [resourceType=image] - Resource type (image or video)
+ * @param   {string} id - Media document ID
+ * @body    {number} [duration] - Display duration for images (1-300 seconds)
+ * @body    {string} [tags] - Comma-separated tags
+ * @body    {string} [description] - File description (max 500 chars)
  */
-router.delete('/:publicId', deleteMedia);
+router.put('/:id', updateMedia);
 
 /**
- * @route   POST /api/media/:publicId/thumbnail
+ * @route   DELETE /api/media/:id
+ * @desc    Delete media file (from both database and Cloudinary)
+ * @access  Private
+ * @param   {string} id - Media document ID
+ */
+router.delete('/:id', deleteMedia);
+
+/**
+ * @route   GET /api/media/:id/download
+ * @desc    Generate secure time-limited download URL
+ * @access  Private
+ * @param   {string} id - Media document ID
+ */
+router.get('/:id/download', generateDownloadUrl);
+
+/**
+ * @route   POST /api/media/:id/thumbnail
  * @desc    Generate thumbnail for video
  * @access  Private
- * @param   {string} publicId - Video public ID
+ * @param   {string} id - Video media document ID
  * @body    {number} [width=400] - Thumbnail width
  * @body    {number} [height=300] - Thumbnail height
  * @body    {string} [start_offset=0] - Time offset for thumbnail generation
  */
-router.post('/:publicId/thumbnail', createVideoThumbnail);
+router.post('/:id/thumbnail', createVideoThumbnail);
 
 /**
  * @route   GET /api/media/health/check
