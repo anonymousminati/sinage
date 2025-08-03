@@ -5,6 +5,7 @@ import { Label } from "./ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "./ui/card";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Loader2, Eye, EyeOff, User, Mail, Lock, CheckCircle } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 interface RegistrationData {
   name: string;
@@ -23,10 +24,10 @@ interface ValidationErrors {
 
 interface RegistrationProps {
   onSwitchToLogin: () => void;
-  onRegistrationSuccess?: (data: { name: string; email: string }) => void;
 }
 
-export function Registration({ onSwitchToLogin, onRegistrationSuccess }: RegistrationProps) {
+export function Registration({ onSwitchToLogin }: RegistrationProps) {
+  const { register } = useAuth();
   const [formData, setFormData] = useState<RegistrationData>({
     name: "",
     email: "",
@@ -126,38 +127,32 @@ export function Registration({ onSwitchToLogin, onRegistrationSuccess }: Registr
     setErrors({});
 
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // Example API call structure:
-      // const response = await fetch('/api/auth/register', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     name: formData.name,
-      //     email: formData.email,
-      //     password: formData.password
-      //   })
-      // });
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate successful registration
-      console.log("Registration submitted:", {
+      const result = await register({
         name: formData.name,
         email: formData.email,
         password: formData.password,
       });
 
-      // Call success callback
-      onRegistrationSuccess?.({
-        name: formData.name,
-        email: formData.email,
-      });
-
+      if (result.success) {
+        // Registration successful - redirect to login page
+        onSwitchToLogin();
+      } else {
+        // Handle registration errors
+        if (result.validationErrors) {
+          // Backend validation errors - merge with existing errors to preserve client-side validation
+          const mergedErrors = { ...errors, ...result.validationErrors };
+          setErrors(mergedErrors);
+        } else {
+          // General error
+          setErrors({
+            general: result.error || "Registration failed. Please try again.",
+          });
+        }
+      }
     } catch (error) {
       console.error("Registration error:", error);
       setErrors({
-        general: "Registration failed. Please try again.",
+        general: "An unexpected error occurred. Please try again.",
       });
     } finally {
       setIsLoading(false);

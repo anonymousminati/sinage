@@ -19,6 +19,8 @@ const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests from frontend URL and localhost for development
     const allowedOrigins = [
+      'http://localhost:5174', 
+      "*", // Allow all origins for development
       process.env.FRONTEND_URL,
       'http://localhost:3000',
       'http://localhost:5173', // Vite default port

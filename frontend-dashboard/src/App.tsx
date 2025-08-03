@@ -10,29 +10,35 @@ import { Navigation } from "./components/Navigation";
 import { Registration } from "./components/Registration";
 import { Login } from "./components/Login";
 import { Toaster } from "./components/ui/sonner";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 
-export default function App() {
+/**
+ * Loading component for authentication initialization
+ */
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+        <p className="text-muted-foreground">Initializing...</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Main application component wrapped with authentication
+ */
+function AppContent() {
+  const { isAuthenticated, isLoading, logout } = useAuth();
   const [currentPage, setCurrentPage] = useState("dashboard");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authPage, setAuthPage] = useState<"login" | "register">("login");
 
-  const handleLoginSuccess = (data: { email: string }) => {
-    console.log("Login successful:", data);
-    setIsAuthenticated(true);
-    setCurrentPage("dashboard");
-  };
-
-  const handleRegistrationSuccess = (data: { name: string; email: string }) => {
-    console.log("Registration successful:", data);
-    setIsAuthenticated(true);
-    setCurrentPage("dashboard");
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setCurrentPage("dashboard");
-    setAuthPage("login");
-  };
+  // Show loading screen while initializing authentication
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   const renderCurrentPage = () => {
     switch (currentPage) {
@@ -89,29 +95,37 @@ export default function App() {
   // Show authentication pages if not authenticated
   if (!isAuthenticated) {
     return (
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="light"
-        enableSystem
-        disableTransitionOnChange
-      >
+      <>
         {authPage === "login" ? (
-          <Login
-            onSwitchToRegister={() => setAuthPage("register")}
-            onLoginSuccess={handleLoginSuccess}
-          />
+          <Login onSwitchToRegister={() => setAuthPage("register")} />
         ) : (
-          <Registration
-            onSwitchToLogin={() => setAuthPage("login")}
-            onRegistrationSuccess={handleRegistrationSuccess}
-          />
+          <Registration onSwitchToLogin={() => setAuthPage("login")} />
         )}
         <Toaster />
-      </ThemeProvider>
+      </>
     );
   }
 
   // Show main application if authenticated
+  return (
+    <>
+      <div className="min-h-screen bg-background">
+        <Navigation 
+          currentPage={currentPage} 
+          onPageChange={setCurrentPage}
+          onLogout={logout}
+        />
+        {renderCurrentPage()}
+        <Toaster />
+      </div>
+    </>
+  );
+}
+
+/**
+ * Root App component with providers
+ */
+export default function App() {
   return (
     <ThemeProvider
       attribute="class"
@@ -119,15 +133,9 @@ export default function App() {
       enableSystem
       disableTransitionOnChange
     >
-      <div className="min-h-screen bg-background">
-        <Navigation 
-          currentPage={currentPage} 
-          onPageChange={setCurrentPage}
-          onLogout={handleLogout}
-        />
-        {renderCurrentPage()}
-        <Toaster />
-      </div>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </ThemeProvider>
   );
 }

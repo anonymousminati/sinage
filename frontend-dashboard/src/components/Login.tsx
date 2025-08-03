@@ -5,6 +5,7 @@ import { Label } from "./ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "./ui/card";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Loader2, Eye, EyeOff, Mail, Lock, LogIn } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 interface LoginData {
   email: string;
@@ -19,10 +20,10 @@ interface ValidationErrors {
 
 interface LoginProps {
   onSwitchToRegister: () => void;
-  onLoginSuccess?: (data: { email: string }) => void;
 }
 
-export function Login({ onSwitchToRegister, onLoginSuccess }: LoginProps) {
+export function Login({ onSwitchToRegister }: LoginProps) {
+  const { login } = useAuth();
   const [formData, setFormData] = useState<LoginData>({
     email: "",
     password: "",
@@ -100,35 +101,30 @@ export function Login({ onSwitchToRegister, onLoginSuccess }: LoginProps) {
     setErrors({});
 
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // Example API call structure:
-      // const response = await fetch('/api/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     email: formData.email,
-      //     password: formData.password
-      //   })
-      // });
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Simulate successful login
-      console.log("Login submitted:", {
+      const result = await login({
         email: formData.email,
         password: formData.password,
       });
 
-      // Call success callback
-      onLoginSuccess?.({
-        email: formData.email,
-      });
-
+      if (result.success) {
+        // Login successful - AuthContext will handle state updates
+        // and App.tsx will automatically redirect to dashboard
+      } else {
+        // Handle login errors
+        if (result.validationErrors) {
+          // Backend validation errors
+          setErrors(result.validationErrors);
+        } else {
+          // General error (including wrong credentials)
+          setErrors({
+            general: result.error || "Login failed. Please check your credentials and try again.",
+          });
+        }
+      }
     } catch (error) {
       console.error("Login error:", error);
       setErrors({
-        general: "Invalid email or password. Please try again.",
+        general: "An unexpected error occurred. Please try again.",
       });
     } finally {
       setIsLoading(false);
