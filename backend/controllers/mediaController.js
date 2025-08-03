@@ -1,16 +1,22 @@
 const multer = require('multer');
+const Joi = require('joi');
 const { 
-  uploadFile, 
+  uploadFileForMediaModel, 
   deleteFile, 
   getFileDetails, 
   generateVideoThumbnail,
-  isValidFileType
+  isValidFileType,
+  getOptimizedUrl,
+  getUserStorageStats,
+  FILE_SIZE_LIMITS
 } = require('../config/cloudinary');
+const Media = require('../models/mediaModel');
 const winston = require('winston');
+const mongoose = require('mongoose');
 
 /**
- * Media Controller using modern Cloudinary upload_stream
- * Handles file uploads without multer-storage-cloudinary
+ * Enhanced Media Controller with comprehensive endpoints
+ * Integrates with Media model for complete file lifecycle management
  */
 
 // Configure multer for memory storage (we'll stream to Cloudinary)
@@ -31,17 +37,40 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB max file size
+    fileSize: 50 * 1024 * 1024, // 50MB max file size
     files: 10 // Max 10 files per request
   }
 });
 
+// Validation schemas
+const uploadSchema = Joi.object({
+  duration: Joi.number().min(1).max(300).optional(),
+  tags: Joi.string().optional(),
+  description: Joi.string().max(500).optional()
+});
+
+const updateMediaSchema = Joi.object({
+  duration: Joi.number().min(1).max(300).optional(),
+  tags: Joi.string().optional(),
+  description: Joi.string().max(500).optional()
+});
+
+const mediaQuerySchema = Joi.object({
+  page: Joi.number().min(1).default(1),
+  limit: Joi.number().min(1).max(100).default(20),
+  type: Joi.string().valid('image', 'video').optional(),
+  search: Joi.string().max(100).optional(),
+  sort: Joi.string().valid('date', 'name', 'size', 'usage').default('date'),
+  order: Joi.string().valid('asc', 'desc').default('desc'),
+  tags: Joi.string().optional()
+});
+
 /**
- * Upload single media file
+ * Upload single media file with metadata handling
  * @route POST /api/media/upload
  * @access Private
  */
-const uploadSingleMedia = async (req, res) => {
+const uploadMedia = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -50,10 +79,20 @@ const uploadSingleMedia = async (req, res) => {
       });
     }
 
-    const { buffer, mimetype, originalname, size } = req.file;
-    const { duration, tags, description } = req.body;
+    // Validate request body
+    const { error, value } = uploadSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.details.map(detail => detail.message)
+      });
+    }
 
-    winston.info('Starting file upload:', {
+    const { buffer, mimetype, originalname, size } = req.file;
+    const { duration, tags, description } = value;
+
+    winston.info('Starting media upload:', {
       service: 'media',
       filename: originalname,
       mimetype,
@@ -61,185 +100,64 @@ const uploadSingleMedia = async (req, res) => {
       userId: req.user.id
     });
 
-    // Upload to Cloudinary
-    const uploadResult = await uploadFile(buffer, mimetype, {
-      public_id: `${Date.now()}_${originalname.split('.')[0]}`,
-      tags: tags ? tags.split(',') : []
-    });
-
-    // Generate thumbnail for videos
-    let thumbnailUrl = uploadResult.url;
-    if (mimetype.startsWith('video/')) {
-      try {
-        const thumbnail = await generateVideoThumbnail(uploadResult.publicId);
-        thumbnailUrl = thumbnail.thumbnailUrl;
-      } catch (thumbnailError) {
-        winston.warn('Failed to generate video thumbnail:', {
-          service: 'media',
-          publicId: uploadResult.publicId,
-          error: thumbnailError.message
-        });
-      }
-    }
-
-    // Create media record (you'll need to create Media model)
+    // Prepare media data for upload
     const mediaData = {
-      userId: req.user.id,
-      originalName: originalname,
-      publicId: uploadResult.publicId,
-      url: uploadResult.url,
-      secureUrl: uploadResult.secureUrl,
-      thumbnailUrl,
-      format: uploadResult.format,
-      resourceType: uploadResult.resourceType,
-      size: uploadResult.size,
-      width: uploadResult.width,
-      height: uploadResult.height,
-      duration: uploadResult.duration || (duration ? parseInt(duration) : null),
-      folder: uploadResult.folder,
-      tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
-      description: description || '',
-      uploadedAt: new Date()
+      duration: duration,
+      tags: tags ? tags.split(',').map(tag => tag.trim().toLowerCase()) : [],
+      description: description || ''
     };
 
-    winston.info('File uploaded successfully:', {
+    // Upload to Cloudinary and prepare for Media model
+    const uploadResult = await uploadFileForMediaModel(
+      buffer, 
+      mimetype, 
+      originalname, 
+      req.user.id,
+      mediaData
+    );
+
+    // Create Media document
+    const media = new Media(uploadResult);
+    await media.save();
+
+    winston.info('Media uploaded and saved successfully:', {
       service: 'media',
-      publicId: uploadResult.publicId,
-      url: uploadResult.url,
+      mediaId: media._id,
+      cloudinaryId: media.cloudinaryId,
       userId: req.user.id
     });
 
     res.status(201).json({
       success: true,
-      message: 'File uploaded successfully',
-      data: mediaData
+      message: 'Media uploaded successfully',
+      data: media
     });
 
   } catch (error) {
-    winston.error('File upload failed:', {
+    winston.error('Media upload failed:', {
       service: 'media',
       userId: req.user?.id,
       error: error.message,
       stack: error.stack
     });
 
-    res.status(500).json({
-      success: false,
-      message: 'Upload failed',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
-  }
-};
-
-/**
- * Upload multiple media files
- * @route POST /api/media/upload/multiple
- * @access Private
- */
-const uploadMultipleMedia = async (req, res) => {
-  try {
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'No files provided'
-      });
-    }
-
-    const { tags, description } = req.body;
-    const uploadResults = [];
-    const errors = [];
-
-    winston.info('Starting multiple file upload:', {
-      service: 'media',
-      fileCount: req.files.length,
-      userId: req.user.id
-    });
-
-    // Process each file
-    for (let i = 0; i < req.files.length; i++) {
-      const file = req.files[i];
-      const { buffer, mimetype, originalname, size } = file;
-
+    // Clean up Cloudinary upload if database save failed
+    if (error.cloudinaryId) {
       try {
-        // Upload to Cloudinary
-        const uploadResult = await uploadFile(buffer, mimetype, {
-          public_id: `${Date.now()}_${i}_${originalname.split('.')[0]}`,
-          tags: tags ? tags.split(',') : []
-        });
-
-        // Generate thumbnail for videos
-        let thumbnailUrl = uploadResult.url;
-        if (mimetype.startsWith('video/')) {
-          try {
-            const thumbnail = await generateVideoThumbnail(uploadResult.publicId);
-            thumbnailUrl = thumbnail.thumbnailUrl;
-          } catch (thumbnailError) {
-            winston.warn('Failed to generate video thumbnail:', {
-              service: 'media',
-              publicId: uploadResult.publicId,
-              error: thumbnailError.message
-            });
-          }
-        }
-
-        const mediaData = {
-          userId: req.user.id,
-          originalName: originalname,
-          publicId: uploadResult.publicId,
-          url: uploadResult.url,
-          secureUrl: uploadResult.secureUrl,
-          thumbnailUrl,
-          format: uploadResult.format,
-          resourceType: uploadResult.resourceType,
-          size: uploadResult.size,
-          width: uploadResult.width,
-          height: uploadResult.height,
-          duration: uploadResult.duration,
-          folder: uploadResult.folder,
-          tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
-          description: description || '',
-          uploadedAt: new Date()
-        };
-
-        uploadResults.push(mediaData);
-
-      } catch (fileError) {
-        winston.error('Individual file upload failed:', {
+        await deleteFile(error.cloudinaryId, error.type || 'image');
+        winston.info('Cleaned up Cloudinary file after database error', {
           service: 'media',
-          filename: originalname,
-          error: fileError.message,
-          userId: req.user.id
+          cloudinaryId: error.cloudinaryId
         });
-
-        errors.push({
-          filename: originalname,
-          error: fileError.message
+      } catch (cleanupError) {
+        winston.error('Failed to cleanup Cloudinary file:', {
+          service: 'media',
+          cloudinaryId: error.cloudinaryId,
+          error: cleanupError.message
         });
       }
     }
 
-    winston.info('Multiple file upload completed:', {
-      service: 'media',
-      successful: uploadResults.length,
-      failed: errors.length,
-      userId: req.user.id
-    });
-
-    res.status(201).json({
-      success: true,
-      message: `Uploaded ${uploadResults.length} files successfully`,
-      data: uploadResults,
-      errors: errors.length > 0 ? errors : undefined
-    });
-
-  } catch (error) {
-    winston.error('Multiple file upload failed:', {
-      service: 'media',
-      userId: req.user?.id,
-      error: error.message,
-      stack: error.stack
-    });
-
     res.status(500).json({
       success: false,
       message: 'Upload failed',
@@ -249,52 +167,286 @@ const uploadMultipleMedia = async (req, res) => {
 };
 
 /**
- * Delete media file
- * @route DELETE /api/media/:publicId
+ * Get user's media with advanced features
+ * @route GET /api/media
  * @access Private
  */
-const deleteMedia = async (req, res) => {
+const getMedia = async (req, res) => {
   try {
-    const { publicId } = req.params;
-    const { resourceType = 'image' } = req.query;
-
-    if (!publicId) {
+    // Validate query parameters
+    const { error, value } = mediaQuerySchema.validate(req.query);
+    if (error) {
       return res.status(400).json({
         success: false,
-        message: 'Public ID is required'
+        message: 'Invalid query parameters',
+        errors: error.details.map(detail => detail.message)
       });
     }
 
-    winston.info('Deleting media file:', {
+    const { page, limit, type, search, sort, order, tags } = value;
+    const skip = (page - 1) * limit;
+
+    // Build query
+    const query = { owner: req.user.id, isActive: true };
+    
+    // Add filters
+    if (type) {
+      query.type = type;
+    }
+
+    if (tags) {
+      const tagArray = tags.split(',').map(tag => tag.trim().toLowerCase());
+      query.tags = { $in: tagArray };
+    }
+
+    if (search) {
+      query.$or = [
+        { originalName: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { tags: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Build sort object
+    const sortField = {
+      date: 'createdAt',
+      name: 'originalName',
+      size: 'fileSize',
+      usage: 'usageCount'
+    }[sort];
+    
+    const sortOrder = order === 'asc' ? 1 : -1;
+    const sortObj = { [sortField]: sortOrder };
+
+    // Execute queries in parallel
+    const [media, totalCount, stats] = await Promise.all([
+      Media.find(query)
+        .sort(sortObj)
+        .skip(skip)
+        .limit(limit)
+        .populate('owner', 'name email'),
+      Media.countDocuments(query),
+      Media.getUserMediaStats(req.user.id)
+    ]);
+
+    winston.info('Media retrieved successfully:', {
       service: 'media',
-      publicId,
-      resourceType,
-      userId: req.user.id
-    });
-
-    // Delete from Cloudinary
-    const deleteResult = await deleteFile(publicId, resourceType);
-
-    // TODO: Also delete from your database
-    // await Media.findOneAndDelete({ publicId, userId: req.user.id });
-
-    winston.info('Media file deleted successfully:', {
-      service: 'media',
-      publicId,
-      result: deleteResult.result,
-      userId: req.user.id
+      userId: req.user.id,
+      count: media.length,
+      totalCount,
+      filters: { type, search, tags }
     });
 
     res.json({
       success: true,
-      message: 'File deleted successfully',
-      data: deleteResult
+      message: 'Media retrieved successfully',
+      data: {
+        media,
+        pagination: {
+          page,
+          limit,
+          totalCount,
+          totalPages: Math.ceil(totalCount / limit),
+          hasNext: page < Math.ceil(totalCount / limit),
+          hasPrev: page > 1
+        },
+        statistics: stats,
+        filters: {
+          type,
+          search,
+          tags,
+          sort,
+          order
+        }
+      }
     });
+
+  } catch (error) {
+    winston.error('Failed to retrieve media:', {
+      service: 'media',
+      userId: req.user?.id,
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve media',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+
+/**
+ * Update media metadata
+ * @route PUT /api/media/:id
+ * @access Private
+ */
+const updateMedia = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid media ID'
+      });
+    }
+
+    // Validate request body
+    const { error, value } = updateMediaSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.details.map(detail => detail.message)
+      });
+    }
+
+    const { duration, tags, description } = value;
+
+    // Find media and verify ownership
+    const media = await Media.findOne({ _id: id, owner: req.user.id, isActive: true });
+    if (!media) {
+      return res.status(404).json({
+        success: false,
+        message: 'Media not found or access denied'
+      });
+    }
+
+    // Update fields
+    const updateData = {};
+    
+    if (duration !== undefined) {
+      if (media.type !== 'image') {
+        return res.status(400).json({
+          success: false,
+          message: 'Duration can only be set for images'
+        });
+      }
+      updateData.duration = duration;
+    }
+
+    if (tags !== undefined) {
+      const tagArray = tags.split(',').map(tag => tag.trim().toLowerCase()).filter(Boolean);
+      updateData.tags = tagArray;
+    }
+
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+
+    // Update media
+    const updatedMedia = await Media.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    ).populate('owner', 'name email');
+
+    winston.info('Media updated successfully:', {
+      service: 'media',
+      mediaId: id,
+      userId: req.user.id,
+      updates: Object.keys(updateData)
+    });
+
+    res.json({
+      success: true,
+      message: 'Media updated successfully',
+      data: updatedMedia
+    });
+
+  } catch (error) {
+    winston.error('Media update failed:', {
+      service: 'media',
+      mediaId: req.params.id,
+      userId: req.user?.id,
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      message: 'Update failed',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+
+/**
+ * Delete media
+ * @route DELETE /api/media/:id
+ * @access Private
+ */
+const deleteMedia = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid media ID'
+      });
+    }
+
+    // Find media and verify ownership
+    const media = await Media.findOne({ _id: id, owner: req.user.id, isActive: true });
+    if (!media) {
+      return res.status(404).json({
+        success: false,
+        message: 'Media not found or access denied'
+      });
+    }
+
+    winston.info('Deleting media:', {
+      service: 'media',
+      mediaId: id,
+      cloudinaryId: media.cloudinaryId,
+      type: media.type,
+      userId: req.user.id
+    });
+
+    try {
+      // Delete from Cloudinary first
+      await deleteFile(media.cloudinaryId, media.type);
+      
+      // Delete from database
+      await Media.findByIdAndUpdate(id, { isActive: false });
+
+      winston.info('Media deleted successfully:', {
+        service: 'media',
+        mediaId: id,
+        cloudinaryId: media.cloudinaryId,
+        userId: req.user.id
+      });
+
+      res.json({
+        success: true,
+        message: 'Media deleted successfully',
+        data: { id, cloudinaryId: media.cloudinaryId }
+      });
+
+    } catch (deleteError) {
+      // If Cloudinary deletion fails, log but still mark as inactive
+      winston.error('Cloudinary deletion failed, marking as inactive:', {
+        service: 'media',
+        mediaId: id,
+        cloudinaryId: media.cloudinaryId,
+        error: deleteError.message
+      });
+
+      await Media.findByIdAndUpdate(id, { isActive: false });
+
+      res.json({
+        success: true,
+        message: 'Media marked as deleted (cleanup may be needed)',
+        data: { id, cloudinaryId: media.cloudinaryId },
+        warning: 'Cloud storage cleanup may be required'
+      });
+    }
 
   } catch (error) {
     winston.error('Media deletion failed:', {
       service: 'media',
-      publicId: req.params.publicId,
+      mediaId: req.params.id,
       userId: req.user?.id,
       error: error.message
     });
@@ -308,49 +460,127 @@ const deleteMedia = async (req, res) => {
 };
 
 /**
- * Get media file details
- * @route GET /api/media/:publicId
+ * Generate secure download URLs
+ * @route GET /api/media/:id/download
  * @access Private
  */
-const getMediaDetails = async (req, res) => {
+const generateDownloadUrl = async (req, res) => {
   try {
-    const { publicId } = req.params;
-    const { resourceType = 'image' } = req.query;
+    const { id } = req.params;
 
-    if (!publicId) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
-        message: 'Public ID is required'
+        message: 'Invalid media ID'
       });
     }
 
-    winston.info('Getting media file details:', {
+    // Find media and verify ownership
+    const media = await Media.findOne({ _id: id, owner: req.user.id, isActive: true });
+    if (!media) {
+      return res.status(404).json({
+        success: false,
+        message: 'Media not found or access denied'
+      });
+    }
+
+    // Generate time-limited download URL (1 hour expiry)
+    const downloadUrl = getOptimizedUrl(media.cloudinaryId, {
+      flags: 'attachment',
+      sign_url: true,
+      expires_at: Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
+    }, media.type);
+
+    // Increment usage counter
+    await media.incrementUsage();
+
+    winston.info('Download URL generated:', {
       service: 'media',
-      publicId,
-      resourceType,
+      mediaId: id,
+      cloudinaryId: media.cloudinaryId,
       userId: req.user.id
     });
 
-    // Get details from Cloudinary
-    const fileDetails = await getFileDetails(publicId, resourceType);
-
     res.json({
       success: true,
-      message: 'File details retrieved successfully',
-      data: fileDetails
+      message: 'Download URL generated successfully',
+      data: {
+        downloadUrl,
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        filename: media.originalName,
+        fileSize: media.fileSize,
+        type: media.type
+      }
     });
 
   } catch (error) {
-    winston.error('Failed to get media details:', {
+    winston.error('Failed to generate download URL:', {
       service: 'media',
-      publicId: req.params.publicId,
+      mediaId: req.params.id,
       userId: req.user?.id,
       error: error.message
     });
 
     res.status(500).json({
       success: false,
-      message: 'Failed to get file details',
+      message: 'Failed to generate download URL',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+
+/**
+ * Get user media statistics
+ * @route GET /api/media/stats
+ * @access Private
+ */
+const getMediaStats = async (req, res) => {
+  try {
+    // Get database statistics
+    const [stats, recentMedia, popularMedia, storageStats] = await Promise.all([
+      Media.getUserMediaStats(req.user.id),
+      Media.findRecentMedia(req.user.id, 5),
+      Media.findPopularMedia(req.user.id, 5),
+      getUserStorageStats(req.user.id).catch(() => null) // Don't fail if Cloudinary stats unavailable
+    ]);
+
+    const responseData = {
+      database: stats,
+      recent: recentMedia,
+      popular: popularMedia,
+      storage: storageStats,
+      limits: {
+        maxFileSize: {
+          image: FILE_SIZE_LIMITS.image,
+          video: FILE_SIZE_LIMITS.video
+        },
+        maxFiles: 1000 // Example limit
+      }
+    };
+
+    winston.info('Media statistics retrieved:', {
+      service: 'media',
+      userId: req.user.id,
+      totalFiles: stats.totalFiles,
+      totalSize: stats.totalSize
+    });
+
+    res.json({
+      success: true,
+      message: 'Media statistics retrieved successfully',
+      data: responseData
+    });
+
+  } catch (error) {
+    winston.error('Failed to get media statistics:', {
+      service: 'media',
+      userId: req.user?.id,
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve statistics',
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
@@ -358,31 +588,41 @@ const getMediaDetails = async (req, res) => {
 
 /**
  * Generate video thumbnail
- * @route POST /api/media/:publicId/thumbnail
+ * @route POST /api/media/:id/thumbnail
  * @access Private
  */
 const createVideoThumbnail = async (req, res) => {
   try {
-    const { publicId } = req.params;
+    const { id } = req.params;
     const { width, height, start_offset } = req.body;
 
-    if (!publicId) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
-        message: 'Public ID is required'
+        message: 'Invalid media ID'
+      });
+    }
+
+    // Find media and verify ownership
+    const media = await Media.findOne({ _id: id, owner: req.user.id, isActive: true, type: 'video' });
+    if (!media) {
+      return res.status(404).json({
+        success: false,
+        message: 'Video not found or access denied'
       });
     }
 
     winston.info('Generating video thumbnail:', {
       service: 'media',
-      publicId,
+      mediaId: id,
+      cloudinaryId: media.cloudinaryId,
       width,
       height,
       start_offset,
       userId: req.user.id
     });
 
-    const thumbnail = await generateVideoThumbnail(publicId, {
+    const thumbnail = await generateVideoThumbnail(media.cloudinaryId, {
       width: width ? parseInt(width) : 400,
       height: height ? parseInt(height) : 300,
       start_offset: start_offset || '0'
@@ -391,13 +631,21 @@ const createVideoThumbnail = async (req, res) => {
     res.json({
       success: true,
       message: 'Thumbnail generated successfully',
-      data: thumbnail
+      data: {
+        ...thumbnail,
+        mediaId: id,
+        originalVideo: {
+          id: media._id,
+          originalName: media.originalName,
+          cloudinaryId: media.cloudinaryId
+        }
+      }
     });
 
   } catch (error) {
     winston.error('Thumbnail generation failed:', {
       service: 'media',
-      publicId: req.params.publicId,
+      mediaId: req.params.id,
       userId: req.user?.id,
       error: error.message
     });
@@ -450,10 +698,12 @@ const handleMulterError = (error, req, res, next) => {
 
 module.exports = {
   upload,
-  uploadSingleMedia,
-  uploadMultipleMedia,
+  uploadMedia,
+  getMedia,
+  updateMedia,
   deleteMedia,
-  getMediaDetails,
+  generateDownloadUrl,
+  getMediaStats,
   createVideoThumbnail,
   handleMulterError
 };

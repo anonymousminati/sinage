@@ -19,6 +19,7 @@ const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests from frontend URL and localhost for development
     const allowedOrigins = [
+      'http://localhost:5177', 
       'http://localhost:5174', 
       'http://localhost:5175', 
       "*", // Allow all origins for development
