@@ -345,6 +345,203 @@ export interface AppMetadata {
 }
 
 // ============================
+// Playlist Management Types
+// ============================
+
+export interface PlaylistSchedule {
+  startDate?: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  weekdays?: number[]; // 0-6 (Sunday-Saturday)
+  timezone?: string;
+}
+
+export interface PlaylistCondition {
+  type: 'time' | 'date' | 'weather' | 'custom';
+  operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains';
+  value: string | number;
+  enabled: boolean;
+}
+
+export interface PlaylistAnalytics {
+  totalPlays: number;
+  totalDuration: number;
+  averagePlayTime: number;
+  mostPlayedItem?: string;
+  lastPlayed?: string;
+  skipRate?: number;
+}
+
+export interface PlaylistTransition {
+  type: 'fade' | 'slide' | 'none';
+  duration: number;
+  easing?: 'ease-in' | 'ease-out' | 'ease-in-out' | 'linear';
+}
+
+export interface PlaylistItem {
+  id: string;
+  mediaId: string;
+  playlistId: string;
+  order: number;
+  duration?: number; // Custom duration override
+  transitions?: PlaylistTransition;
+  conditions?: PlaylistCondition[];
+  // Include media data for display
+  media?: MediaItem;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Playlist {
+  id: string;
+  name: string;
+  description: string;
+  isActive: boolean; // Maps to isActive in backend model (not isPublic)
+  isPublic?: boolean; // Additional field for backend compatibility
+  owner: string;
+  items: PlaylistItem[];
+  totalDuration: number;
+  assignedScreens: string[];
+  tags?: string[];
+  settings?: {
+    shuffle?: boolean;
+    loop?: boolean;
+    autoAdvance?: boolean;
+    pauseBetweenItems?: number;
+  };
+  schedule?: PlaylistSchedule;
+  analytics?: PlaylistAnalytics;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScreenAssignment {
+  screenId: string;
+  screenName: string;
+  playlistId: string;
+  playlistName: string;
+  assignedAt: string;
+  status: 'active' | 'inactive' | 'error';
+}
+
+export interface PlaylistFilters {
+  search: string;
+  isPublic?: boolean;
+  tags?: string;
+  sortBy: 'name' | 'created' | 'modified' | 'duration' | 'items' | 'plays';
+  sortOrder: 'asc' | 'desc';
+  assignedToScreen?: string;
+}
+
+export interface PlaylistPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export interface DragState {
+  isDragging: boolean;
+  draggedItemId?: string;
+  draggedItemType?: 'media' | 'playlist-item';
+  dropZoneId?: string;
+  dragOverItemId?: string;
+}
+
+// API Request/Response Types
+export interface CreatePlaylistData {
+  name: string;
+  description?: string;
+  isActive?: boolean;
+  isPublic?: boolean;
+  tags?: string[];
+  settings?: {
+    shuffle?: boolean;
+    loop?: boolean;
+    autoAdvance?: boolean;
+    pauseBetweenItems?: number;
+  };
+  schedule?: PlaylistSchedule;
+}
+
+export interface UpdatePlaylistData {
+  name?: string;
+  description?: string;
+  isActive?: boolean;
+  isPublic?: boolean;
+  tags?: string[];
+  settings?: {
+    shuffle?: boolean;
+    loop?: boolean;
+    autoAdvance?: boolean;
+    pauseBetweenItems?: number;
+  };
+  schedule?: PlaylistSchedule;
+}
+
+export interface GetPlaylistParams extends Partial<PlaylistFilters> {
+  page?: number;
+  limit?: number;
+}
+
+export interface PlaylistResponse {
+  success: boolean;
+  message: string;
+  data: {
+    playlists: Playlist[];
+    pagination: PlaylistPagination;
+    filters: PlaylistFilters;
+  };
+}
+
+export interface PlaylistStatsResponse {
+  success: boolean;
+  message: string;
+  data: {
+    totalPlaylists: number;
+    activePlaylists: number;
+    totalItems: number;
+    averageDuration: number;
+    mostUsedMedia: MediaItem[];
+    recentPlaylists: Playlist[];
+  };
+}
+
+export interface SinglePlaylistResponse {
+  success: boolean;
+  message: string;
+  data: Playlist;
+}
+
+export interface PlaylistItemResponse {
+  success: boolean;
+  message: string;
+  data: PlaylistItem;
+}
+
+export interface BulkPlaylistOperation {
+  playlistIds: string[];
+  operation: 'activate' | 'deactivate' | 'delete' | 'duplicate';
+  data?: any;
+}
+
+export interface BulkPlaylistResponse {
+  success: boolean;
+  message: string;
+  data: {
+    successful: string[];
+    failed: Array<{
+      id: string;
+      error: string;
+    }>;
+  };
+}
+
+// ============================
 // Export all utility functions related to types
 // ============================
 

@@ -51,6 +51,7 @@ const {
 // Routes
 const authRoutes = require('./routes/authRoutes');
 const mediaRoutes = require('./routes/mediaRoutes');
+const playlistRoutes = require('./routes/playlistRoutes');
 
 // Initialize Express app
 const app = express();
@@ -189,6 +190,7 @@ app.get('/health/detailed', async (req, res) => {
 // Mount authentication routes
 app.use('/api/auth', authRoutes);
 app.use('/api/media', mediaRoutes);
+app.use('/api/playlists', playlistRoutes);
 
 // API root endpoint
 app.get('/api', (req, res) => {
@@ -226,7 +228,9 @@ io.use(async (socket, next) => {
     const { verifyAccessToken } = require('./utils/tokenUtils');
     const User = require('./models/User');
     
-    const decoded = verifyAccessToken(token.replace('Bearer ', ''));
+    // Handle both Bearer token and raw token formats
+    const cleanToken = token.startsWith('Bearer ') ? token.replace('Bearer ', '') : token;
+    const decoded = verifyAccessToken(cleanToken);
     const user = await User.findById(decoded.userId);
     
     if (!user || !user.isActive) {
@@ -249,7 +253,9 @@ io.use(async (socket, next) => {
     logger.warn('Socket.IO authentication failed:', {
       service: 'socket',
       error: error.message,
-      socketId: socket.id
+      socketId: socket.id,
+      tokenPresent: !!token,
+      tokenStart: token ? token.substring(0, 20) + '...' : 'none'
     });
     
     next(new Error('Authentication failed'));
@@ -339,7 +345,280 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Handle playlist updates
+  // ============================
+  // Playlist Collaboration Events
+  // ============================
+
+  // Handle playlist room management
+  socket.on('join:playlist', ({ playlistId }) => {
+    socket.join(`playlist:${playlistId}`);
+    socket.emit('joined:playlist', { playlistId, userId: socket.userId });
+    
+    // Notify other users in the playlist room
+    socket.to(`playlist:${playlistId}`).emit('user:joined:playlist', {
+      userId: socket.userId,
+      userEmail: socket.userEmail,
+      playlistId,
+      timestamp: new Date().toISOString()
+    });
+
+    logger.info('User joined playlist room:', {
+      service: 'socket',
+      playlistId,
+      userId: socket.userId,
+      socketId: socket.id
+    });
+  });
+
+  socket.on('leave:playlist', ({ playlistId }) => {
+    socket.leave(`playlist:${playlistId}`);
+    
+    // Notify other users in the playlist room
+    socket.to(`playlist:${playlistId}`).emit('user:left:playlist', {
+      userId: socket.userId,
+      userEmail: socket.userEmail,
+      playlistId,
+      timestamp: new Date().toISOString()
+    });
+
+    logger.info('User left playlist room:', {
+      service: 'socket',
+      playlistId,
+      userId: socket.userId,
+      socketId: socket.id
+    });
+  });
+
+  // Handle playlist update events
+  socket.on('playlist:update', (data) => {
+    const { playlistId, data: updateData, timestamp } = data;
+    
+    // Broadcast to all users in the playlist room except the sender
+    socket.to(`playlist:${playlistId}`).emit('playlist:updated', {
+      playlistId,
+      playlist: updateData,
+      updatedBy: socket.userId,
+      updatedByEmail: socket.userEmail,
+      timestamp,
+      changeType: 'metadata'
+    });
+
+    logger.info('Playlist metadata update:', {
+      service: 'socket',
+      playlistId,
+      updatedBy: socket.userId,
+      timestamp
+    });
+  });
+
+  // Handle playlist item addition
+  socket.on('playlist:item:add', (data) => {
+    const { playlistId, item, position, timestamp } = data;
+    
+    socket.to(`playlist:${playlistId}`).emit('playlist:item:added', {
+      playlistId,
+      item,
+      position,
+      updatedBy: socket.userId,
+      updatedByEmail: socket.userEmail,
+      timestamp
+    });
+
+    logger.info('Playlist item added:', {
+      service: 'socket',
+      playlistId,
+      itemId: item.id,
+      position,
+      updatedBy: socket.userId
+    });
+  });
+
+  // Handle playlist item removal
+  socket.on('playlist:item:remove', (data) => {
+    const { playlistId, itemId, timestamp } = data;
+    
+    socket.to(`playlist:${playlistId}`).emit('playlist:item:removed', {
+      playlistId,
+      itemId,
+      removedBy: socket.userId,
+      removedByEmail: socket.userEmail,
+      timestamp
+    });
+
+    logger.info('Playlist item removed:', {
+      service: 'socket',
+      playlistId,
+      itemId,
+      removedBy: socket.userId
+    });
+  });
+
+  // Handle playlist item reordering
+  socket.on('playlist:item:reorder', (data) => {
+    const { playlistId, items, timestamp } = data;
+    
+    socket.to(`playlist:${playlistId}`).emit('playlist:item:reordered', {
+      playlistId,
+      items,
+      updatedBy: socket.userId,
+      updatedByEmail: socket.userEmail,
+      timestamp
+    });
+
+    logger.info('Playlist items reordered:', {
+      service: 'socket',
+      playlistId,
+      itemCount: items.length,
+      updatedBy: socket.userId
+    });
+  });
+
+  // Handle playlist screen assignment
+  socket.on('playlist:assign', (data) => {
+    const { playlistId, screenIds, timestamp } = data;
+    
+    // Notify playlist room users
+    socket.to(`playlist:${playlistId}`).emit('playlist:assigned', {
+      playlistId,
+      screenIds,
+      assignedBy: socket.userId,
+      assignedByEmail: socket.userEmail,
+      timestamp
+    });
+
+    // Notify affected screens
+    screenIds.forEach(screenId => {
+      io.to(`screen:${screenId}`).emit('playlist:assignment:changed', {
+        playlistId,
+        action: 'assigned',
+        timestamp
+      });
+    });
+
+    // Notify all dashboard users
+    io.to('role:admin').to('role:user').emit('playlist:assigned', {
+      playlistId,
+      screenIds,
+      assignedBy: socket.userId,
+      assignedByEmail: socket.userEmail,
+      timestamp
+    });
+
+    logger.info('Playlist assigned to screens:', {
+      service: 'socket',
+      playlistId,
+      screenIds,
+      assignedBy: socket.userId
+    });
+  });
+
+  // Handle playlist screen unassignment
+  socket.on('playlist:unassign', (data) => {
+    const { playlistId, screenIds, timestamp } = data;
+    
+    // Notify playlist room users
+    socket.to(`playlist:${playlistId}`).emit('playlist:unassigned', {
+      playlistId,
+      screenIds,
+      unassignedBy: socket.userId,
+      unassignedByEmail: socket.userEmail,
+      timestamp
+    });
+
+    // Notify affected screens
+    screenIds.forEach(screenId => {
+      io.to(`screen:${screenId}`).emit('playlist:assignment:changed', {
+        playlistId,
+        action: 'unassigned',
+        timestamp
+      });
+    });
+
+    // Notify all dashboard users
+    io.to('role:admin').to('role:user').emit('playlist:unassigned', {
+      playlistId,
+      screenIds,
+      unassignedBy: socket.userId,
+      unassignedByEmail: socket.userEmail,
+      timestamp
+    });
+
+    logger.info('Playlist unassigned from screens:', {
+      service: 'socket',
+      playlistId,
+      screenIds,
+      unassignedBy: socket.userId
+    });
+  });
+
+  // ============================
+  // Media Library Events
+  // ============================
+
+  // Handle media upload notification
+  socket.on('media:upload', (data) => {
+    const { media, timestamp } = data;
+    
+    // Notify all users except the uploader
+    socket.to(`user:${socket.userId}`).emit('media:uploaded', {
+      mediaId: media.id,
+      media,
+      uploadedBy: socket.userId,
+      uploadedByEmail: socket.userEmail,
+      timestamp,
+      action: 'uploaded'
+    });
+
+    logger.info('Media uploaded:', {
+      service: 'socket',
+      mediaId: media.id,
+      uploadedBy: socket.userId,
+      fileType: media.type
+    });
+  });
+
+  // Handle media deletion notification
+  socket.on('media:delete', (data) => {
+    const { mediaId, timestamp } = data;
+    
+    // Notify all users except the deleter
+    socket.to('role:admin').to('role:user').emit('media:deleted', {
+      mediaId,
+      deletedBy: socket.userId,
+      deletedByEmail: socket.userEmail,
+      timestamp,
+      action: 'deleted'
+    });
+
+    logger.info('Media deleted:', {
+      service: 'socket',
+      mediaId,
+      deletedBy: socket.userId
+    });
+  });
+
+  // Handle media update notification
+  socket.on('media:update', (data) => {
+    const { mediaId, data: updateData, timestamp } = data;
+    
+    // Notify all users except the updater
+    socket.to('role:admin').to('role:user').emit('media:updated', {
+      mediaId,
+      media: updateData,
+      updatedBy: socket.userId,
+      updatedByEmail: socket.userEmail,
+      timestamp,
+      action: 'updated'
+    });
+
+    logger.info('Media updated:', {
+      service: 'socket',
+      mediaId,
+      updatedBy: socket.userId
+    });
+  });
+
+  // Handle playlist updates for screens
   socket.on('playlist-update', (data) => {
     const { screenId, playlistId, action } = data;
     
@@ -350,7 +629,7 @@ io.on('connection', (socket) => {
       timestamp: new Date().toISOString()
     });
 
-    logger.info('Playlist update:', {
+    logger.info('Screen playlist update:', {
       service: 'socket',
       screenId,
       playlistId,

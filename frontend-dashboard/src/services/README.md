@@ -1,3 +1,385 @@
+# Services Documentation
+
+This directory contains all service modules for the Sinage frontend dashboard, including API clients, real-time communication, and authentication services.
+
+## Service Overview
+
+### 1. Real-time Communication (`socketService.ts`)
+Socket.IO-based real-time communication service for collaborative editing and live updates.
+
+### 2. Media API Service (`mediaAPI.ts`) 
+Comprehensive media management service with upload progress tracking and metadata handling.
+
+### 3. Playlist API Service (`playlistAPI.ts`)
+Playlist CRUD operations with drag-and-drop support and screen assignment management.
+
+### 4. Authentication Service (`auth.ts`)
+JWT-based authentication with automatic token refresh and session management.
+
+### 5. Base API Client (`api.ts`)
+Core HTTP client with authentication, retry logic, and file upload capabilities.
+
+---
+
+# Real-time Communication Services
+
+The real-time system enables collaborative editing of playlists, live media synchronization, and instant screen status updates across multiple users and devices.
+
+## Architecture
+
+### Socket Service (`socketService.ts`)
+The core Socket.IO client service that manages:
+- Connection lifecycle (connect, disconnect, reconnect)
+- Authentication with JWT tokens
+- Event handling and emission
+- Room-based subscriptions
+- Connection status monitoring
+- Event buffering during disconnections
+
+### Store Integration
+Real-time events are integrated into Zustand stores:
+
+#### Playlist Store (`usePlaylistStore.ts`)
+- **Events Listened**: `playlist:updated`, `playlist:item:added`, `playlist:item:removed`, `playlist:item:reordered`, `playlist:assigned`, `playlist:unassigned`, `user:joined:playlist`, `user:left:playlist`
+- **Events Emitted**: `playlist:update`, `playlist:item:add`, `playlist:item:remove`, `playlist:item:reorder`, `playlist:assign`, `playlist:unassign`
+- **Features**: 
+  - Real-time playlist synchronization
+  - Conflict detection and resolution
+  - User presence tracking
+  - Optimistic updates with rollback
+
+#### Media Store (`useMediaStore.ts`)
+- **Events Listened**: `media:uploaded`, `media:deleted`, `media:updated`
+- **Events Emitted**: `media:upload`, `media:delete`, `media:update`
+- **Features**:
+  - Live media library updates
+  - Upload notifications
+  - Automatic statistics updates
+
+## Socket Events
+
+### Connection Events
+- `connect` - Client successfully connected
+- `disconnect` - Client disconnected
+- `reconnect` - Client reconnected after disconnection
+- `connect_error` - Connection failed
+- `reconnect_error` - Reconnection failed
+
+### Room Management
+- `join:playlist` - Join a playlist room for real-time updates
+- `leave:playlist` - Leave a playlist room
+- `join:user` - Join user-specific room
+- `joined:playlist` - Confirmation of playlist room join
+
+### Playlist Events
+- `playlist:updated` - Playlist metadata changed
+- `playlist:item:added` - Media item added to playlist
+- `playlist:item:removed` - Media item removed from playlist
+- `playlist:item:reordered` - Playlist items reordered
+- `playlist:assigned` - Playlist assigned to screens
+- `playlist:unassigned` - Playlist unassigned from screens
+
+### Media Events
+- `media:uploaded` - New media file uploaded
+- `media:deleted` - Media file deleted
+- `media:updated` - Media metadata updated
+
+### User Presence Events
+- `user:joined:playlist` - User joined playlist editing session
+- `user:left:playlist` - User left playlist editing session
+
+### Screen Events (for future display client)
+- `screen:status:changed` - Screen online/offline status
+- `screen:playlist:changed` - Screen's current playlist changed
+- `screen:heartbeat` - Screen heartbeat signal
+
+## Usage
+
+### Initializing Socket Connection
+
+```typescript
+import { socketService } from '../services/socketService';
+
+// In a store or component
+const initializeSocket = async () => {
+  try {
+    await socketService.connect();
+    console.log('Socket connected');
+  } catch (error) {
+    console.error('Socket connection failed:', error);
+  }
+};
+```
+
+### Subscribing to Events
+
+```typescript
+// Listen for playlist updates
+socketService.on('playlist:updated', (data) => {
+  console.log('Playlist updated:', data);
+  // Update local state
+});
+
+// Join a playlist room
+socketService.joinPlaylistRoom('playlist-123');
+
+// Leave the room when done
+socketService.leavePlaylistRoom('playlist-123');
+```
+
+### Emitting Events
+
+```typescript
+// Emit a playlist update
+socketService.emitPlaylistUpdate('playlist-123', {
+  name: 'Updated Playlist Name',
+  description: 'New description'
+});
+
+// Emit item addition
+socketService.emitPlaylistItemAdded('playlist-123', newItem, 0);
+```
+
+### Connection Status Monitoring
+
+```typescript
+import { useSocketStatus } from '../hooks/useSocketStatus';
+
+const MyComponent = () => {
+  const { isConnected, isConnecting, reconnectAttempts } = useSocketStatus();
+  
+  return (
+    <div>
+      Status: {isConnected ? 'Connected' : isConnecting ? 'Connecting...' : 'Offline'}
+      {reconnectAttempts > 0 && <span>Reconnect attempts: {reconnectAttempts}</span>}
+    </div>
+  );
+};
+```
+
+## Conflict Resolution
+
+When multiple users edit the same playlist simultaneously, conflicts are detected and resolved:
+
+1. **Detection**: When a user tries to save changes while another user has already modified the same playlist
+2. **Notification**: User receives a toast notification about the conflict
+3. **Resolution Dialog**: Modal appears with options:
+   - Accept remote changes (recommended)
+   - Keep local changes
+   - Manual merge (future feature)
+
+### Conflict Resolution Flow
+
+```typescript
+// In store
+if (state.currentPlaylist?.id === playlistId && state.operationLoading[`update_${playlistId}`]) {
+  // Conflict detected
+  set({
+    conflictResolution: {
+      hasConflict: true,
+      conflictingUserId: updatedBy,
+      conflictingUserEmail: event.updatedByEmail,
+      localVersion: state.currentPlaylist,
+      remoteVersion: playlist,
+      conflictType: 'metadata'
+    }
+  });
+  return;
+}
+```
+
+## Error Handling
+
+### Connection Errors
+- Automatic reconnection with exponential backoff
+- Event buffering during disconnections
+- Connection status indicators in UI
+- Toast notifications for connection state changes
+
+### Authentication Errors
+- Automatic token refresh (if implemented)
+- Logout and redirect to login on persistent auth failures
+- Clear error messages for debugging
+
+### Event Handling Errors
+- Try-catch blocks around all event handlers
+- Graceful degradation when real-time features fail
+- Fallback to polling or manual refresh options
+
+## Testing Real-time Features
+
+### Manual Testing Checklist
+
+1. **Connection Testing**
+   - [ ] Open multiple browser tabs/windows
+   - [ ] Verify connection status indicators
+   - [ ] Test reconnection after network disruption
+
+2. **Playlist Collaboration**
+   - [ ] Create playlist in one tab, verify it appears in others
+   - [ ] Add media items in one tab, verify real-time updates
+   - [ ] Reorder items and check synchronization
+   - [ ] Delete playlist and verify removal across clients
+
+3. **Conflict Resolution**
+   - [ ] Edit same playlist metadata simultaneously
+   - [ ] Verify conflict dialog appears
+   - [ ] Test all resolution options
+   - [ ] Ensure data consistency after resolution
+
+4. **Media Library Synchronization**
+   - [ ] Upload media in one tab, verify it appears in others
+   - [ ] Delete media and check real-time removal
+   - [ ] Update media metadata and verify sync
+
+5. **User Presence**
+   - [ ] Open playlist editor in multiple tabs
+   - [ ] Verify active user count updates
+   - [ ] Check user join/leave notifications
+
+6. **Screen Management** (when display client is available)
+   - [ ] Screen status updates
+   - [ ] Playlist assignment notifications
+   - [ ] Heartbeat monitoring
+
+### Automated Testing
+
+```typescript
+// Example test setup
+describe('Socket Service', () => {
+  it('should connect successfully with valid token', async () => {
+    localStorage.setItem('token', 'valid-jwt-token');
+    await socketService.connect();
+    expect(socketService.isConnected()).toBe(true);
+  });
+
+  it('should handle playlist updates', (done) => {
+    socketService.on('playlist:updated', (data) => {
+      expect(data.playlistId).toBe('test-playlist');
+      done();
+    });
+    
+    // Simulate server event
+    mockSocket.emit('playlist:updated', { playlistId: 'test-playlist' });
+  });
+});
+```
+
+## Performance Considerations
+
+### Event Throttling
+- Reorder events are debounced to prevent excessive network traffic
+- Search events use debouncing (300ms delay)
+- Connection status updates are throttled
+
+### Memory Management
+- Event listeners are properly cleaned up in useEffect cleanup
+- Socket connections are closed on component unmount
+- Event buffer has size limits to prevent memory leaks
+
+### Network Optimization
+- Events are batched where possible
+- Only necessary data is sent in events
+- Compression enabled for socket communication
+
+## Security
+
+### Authentication
+- JWT tokens required for socket connection
+- Tokens validated on server for each connection
+- Automatic disconnection on token expiry
+
+### Authorization
+- Room-based access control
+- User can only join rooms for playlists they own/have access to
+- Administrative events require admin role
+
+### Data Validation
+- All incoming events validated on client and server
+- Sanitization of user-generated content
+- Rate limiting on server to prevent spam/abuse
+
+## Monitoring and Debugging
+
+### Client-side Logging
+```typescript
+// Enable debug mode
+localStorage.setItem('socket.io.debug', '*');
+
+// Monitor connection status
+socketService.onConnectionStatusChange((status) => {
+  console.log('Connection status:', status);
+});
+```
+
+### Server-side Monitoring
+- Connection counts and user sessions
+- Event frequency and patterns
+- Error rates and types
+- Performance metrics
+
+## Future Enhancements
+
+### Planned Features
+- [ ] Manual conflict merge resolution
+- [ ] Real-time cursor positions for collaborative editing
+- [ ] Voice/video chat integration
+- [ ] Advanced presence indicators (typing, active areas)
+- [ ] Offline support with sync on reconnection
+- [ ] Push notifications for mobile devices
+
+### Performance Improvements
+- [ ] Event compression for large datasets
+- [ ] Selective room subscriptions
+- [ ] Connection pooling for high-traffic scenarios
+- [ ] CDN integration for global socket distribution
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Connection Fails**
+   - Check JWT token validity
+   - Verify server is running and accessible
+   - Check network connectivity
+   - Ensure CORS settings allow connection
+
+2. **Events Not Received**
+   - Verify room subscription
+   - Check event name spelling
+   - Ensure proper authentication
+   - Check server-side event emission
+
+3. **Performance Issues**
+   - Monitor event frequency
+   - Check for memory leaks
+   - Verify proper cleanup of listeners
+   - Consider event throttling/debouncing
+
+4. **Conflict Resolution Not Working**
+   - Check conflict detection logic
+   - Verify user permissions
+   - Ensure proper state synchronization
+   - Check server-side conflict handling
+
+### Debug Commands
+
+```javascript
+// In browser console
+window.socketService = socketService;
+
+// Check connection status
+socketService.getConnectionStatus();
+
+// Manual event emission
+socketService.emit('test-event', { data: 'test' });
+
+// View active listeners
+console.log(socketService.socket?.listeners());
+```
+
+---
+
 # Media API Service Layer Documentation
 
 This document provides comprehensive guidance on using the new Media API Service Layer for all media-related operations in the frontend dashboard.

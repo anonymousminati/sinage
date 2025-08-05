@@ -1,159 +1,315 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Checkbox } from "./ui/checkbox";
-import { Search, Monitor, MapPin, Wifi, WifiOff, AlertTriangle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Separator } from "./ui/separator";
+import { ScrollArea } from "./ui/scroll-area";
+import { 
+  Monitor, 
+  Search, 
+  Wifi, 
+  WifiOff, 
+  AlertCircle, 
+  Clock, 
+  Calendar,
+  CheckCircle2,
+  AlertTriangle,
+  Filter,
+  Grid3X3,
+  List,
+  RotateCw,
+  Users,
+  Zap,
+  MapPin
+} from "lucide-react";
+import { cn } from "../lib/utils";
 import { toast } from "sonner";
+import type { Playlist, ScreenAssignment } from "../types";
 
 interface Screen {
   id: string;
   name: string;
   location: string;
-  status: 'online' | 'offline' | 'error';
+  status: 'online' | 'offline' | 'connecting' | 'error' | 'maintenance';
+  lastSeen: string;
   currentPlaylist?: string;
-}
-
-interface Playlist {
-  id: string;
-  name: string;
-  assignedScreens: string[];
+  currentPlaylistName?: string;
+  resolution: string;
+  orientation: 'landscape' | 'portrait';
+  tags: string[];
+  group?: string;
 }
 
 interface PlaylistAssignmentProps {
-  playlist: Playlist | undefined;
+  playlist: Playlist | null;
   isOpen: boolean;
   onClose: () => void;
+  onAssign?: (screenIds: string[]) => void;
+  className?: string;
 }
 
-export function PlaylistAssignment({ playlist, isOpen, onClose }: PlaylistAssignmentProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+interface AssignmentFilters {
+  search: string;
+  status: 'all' | 'online' | 'offline' | 'available';
+  group: string;
+  orientation: 'all' | 'landscape' | 'portrait';
+}
+
+interface AssignmentConflict {
+  screenId: string;
+  screenName: string;
+  currentPlaylist: string;
+  currentPlaylistName: string;
+}
+
+// Mock screen data - in real app this would come from API/store
+const mockScreens: Screen[] = [
+  {
+    id: "SCR-001",
+    name: "Main Lobby Display",
+    location: "Building A - Lobby",
+    status: 'online',
+    lastSeen: new Date(Date.now() - 30000).toISOString(),
+    currentPlaylist: "playlist-1",
+    currentPlaylistName: "Welcome Content",
+    resolution: "1920x1080",
+    orientation: 'landscape',
+    tags: ['lobby', 'main', 'high-traffic'],
+    group: 'Building A'
+  },
+  {
+    id: "SCR-002",
+    name: "Conference Room Alpha",
+    location: "Building A - Floor 2",
+    status: 'online',
+    lastSeen: new Date(Date.now() - 120000).toISOString(),
+    resolution: "3840x2160",
+    orientation: 'landscape',
+    tags: ['conference', 'meeting'],
+    group: 'Building A'
+  },
+  {
+    id: "SCR-003",
+    name: "Cafeteria Menu Board",
+    location: "Building B - Cafeteria",
+    status: 'offline',
+    lastSeen: new Date(Date.now() - 3600000).toISOString(),
+    currentPlaylist: "playlist-2",
+    currentPlaylistName: "Daily Menu",
+    resolution: "1080x1920",
+    orientation: 'portrait',
+    tags: ['cafeteria', 'menu', 'food'],
+    group: 'Building B'
+  },
+  {
+    id: "SCR-004",
+    name: "Reception Display",
+    location: "Building A - Reception",
+    status: 'connecting',
+    lastSeen: new Date(Date.now() - 300000).toISOString(),
+    resolution: "1920x1080",
+    orientation: 'landscape',
+    tags: ['reception', 'visitors'],
+    group: 'Building A'
+  },
+  {
+    id: "SCR-005",
+    name: "Emergency Exit Board",
+    location: "Building C - Emergency Exit",
+    status: 'error',
+    lastSeen: new Date(Date.now() - 1800000).toISOString(),
+    resolution: "1280x720",
+    orientation: 'landscape',
+    tags: ['emergency', 'safety'],
+    group: 'Building C'
+  },
+  {
+    id: "SCR-006",
+    name: "Elevator Display",
+    location: "Building A - Elevator Bank",
+    status: 'maintenance',
+    lastSeen: new Date(Date.now() - 900000).toISOString(),
+    resolution: "1080x1920",
+    orientation: 'portrait',
+    tags: ['elevator', 'information'],
+    group: 'Building A'
+  }
+];
+
+export function PlaylistAssignment({ 
+  playlist, 
+  isOpen, 
+  onClose, 
+  onAssign,
+  className 
+}: PlaylistAssignmentProps) {
   const [selectedScreens, setSelectedScreens] = useState<string[]>([]);
+  const [filters, setFilters] = useState<AssignmentFilters>({
+    search: '',
+    status: 'all',
+    group: 'all',
+    orientation: 'all'
+  });
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showConflicts, setShowConflicts] = useState(false);
+  const [assignmentConflicts, setAssignmentConflicts] = useState<AssignmentConflict[]>([]);
+  const [isAssigning, setIsAssigning] = useState(false);
 
-  const screens: Screen[] = [
-    {
-      id: "SCR-001",
-      name: "Main Lobby Display",
-      location: "Building A - Lobby",
-      status: "online",
-      currentPlaylist: "Main Lobby Welcome"
-    },
-    {
-      id: "SCR-002",
-      name: "Cafeteria Menu Board",
-      location: "Building A - Cafeteria", 
-      status: "online",
-      currentPlaylist: "Cafeteria Menu"
-    },
-    {
-      id: "SCR-003",
-      name: "Conference Room A",
-      location: "Building B - Room 201",
-      status: "offline"
-    },
-    {
-      id: "SCR-004",
-      name: "Reception Display",
-      location: "Building A - Reception",
-      status: "online",
-      currentPlaylist: "Main Lobby Welcome"
-    },
-    {
-      id: "SCR-005",
-      name: "Elevator Display 1",
-      location: "Building A - Elevator",
-      status: "online"
-    },
-    {
-      id: "SCR-006",
-      name: "Parking Display",
-      location: "Parking Garage",
-      status: "error"
-    }
-  ];
-
-  const filteredScreens = screens.filter(screen =>
-    screen.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    screen.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    screen.id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'online':
-        return <Wifi className="h-4 w-4 text-green-600" />;
-      case 'offline':
-        return <WifiOff className="h-4 w-4 text-red-600" />;
-      case 'error':
-        return <AlertTriangle className="h-4 w-4 text-red-600" />;
-      default:
-        return <Monitor className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'online':
-        return 'text-green-600 bg-green-50 border-green-200';
-      case 'offline':
-        return 'text-red-600 bg-red-50 border-red-200';
-      case 'error':
-        return 'text-red-600 bg-red-50 border-red-200';
-      default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
-    }
-  };
-
-  const handleScreenSelect = (screenId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedScreens([...selectedScreens, screenId]);
-    } else {
-      setSelectedScreens(selectedScreens.filter(id => id !== screenId));
-    }
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedScreens(filteredScreens.filter(s => s.status === 'online').map(s => s.id));
-    } else {
+  // Reset state when dialog opens/closes
+  useEffect(() => {
+    if (isOpen) {
       setSelectedScreens([]);
+      setFilters({
+        search: '',
+        status: 'all',
+        group: 'all',
+        orientation: 'all'
+      });
+      setShowConflicts(false);
+      setAssignmentConflicts([]);
+    }
+  }, [isOpen, playlist]);
+
+  // Filter screens based on current filters
+  const filteredScreens = useMemo(() => {
+    return mockScreens.filter(screen => {
+      const matchesSearch = screen.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+                           screen.location.toLowerCase().includes(filters.search.toLowerCase()) ||
+                           screen.tags.some(tag => tag.toLowerCase().includes(filters.search.toLowerCase()));
+      
+      const matchesStatus = filters.status === 'all' || 
+                           (filters.status === 'available' && !screen.currentPlaylist) ||
+                           screen.status === filters.status;
+      
+      const matchesGroup = filters.group === 'all' || screen.group === filters.group;
+      const matchesOrientation = filters.orientation === 'all' || screen.orientation === filters.orientation;
+      
+      return matchesSearch && matchesStatus && matchesGroup && matchesOrientation;
+    });
+  }, [filters]);
+
+  // Get unique groups for filter dropdown
+  const availableGroups = useMemo(() => {
+    const groups = Array.from(new Set(mockScreens.map(screen => screen.group).filter(Boolean)));
+    return groups.sort();
+  }, []);
+
+  // Get screen status info
+  const getStatusInfo = (status: Screen['status']) => {
+    switch (status) {
+      case 'online':
+        return { icon: Wifi, color: 'text-green-600', bg: 'bg-green-100', label: 'Online' };
+      case 'offline':
+        return { icon: WifiOff, color: 'text-red-600', bg: 'bg-red-100', label: 'Offline' };
+      case 'connecting':
+        return { icon: RotateCw, color: 'text-yellow-600', bg: 'bg-yellow-100', label: 'Connecting' };
+      case 'error':
+        return { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-100', label: 'Error' };
+      case 'maintenance':
+        return { icon: AlertTriangle, color: 'text-blue-600', bg: 'bg-blue-100', label: 'Maintenance' };
+      default:
+        return { icon: Monitor, color: 'text-gray-600', bg: 'bg-gray-100', label: 'Unknown' };
     }
   };
 
-  const handleAssign = () => {
-    if (selectedScreens.length === 0) {
-      toast.error("Please select at least one screen");
-      return;
-    }
+  // Format last seen time
+  const formatLastSeen = (lastSeen: string) => {
+    const diff = Date.now() - new Date(lastSeen).getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
 
-    toast.success(`Playlist assigned to ${selectedScreens.length} screen(s)`);
-    setSelectedScreens([]);
-    onClose();
+    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    if (minutes > 0) return `${minutes} min${minutes > 1 ? 's' : ''} ago`;
+    return 'Just now';
   };
 
-  const handleUnassign = () => {
-    if (!playlist) return;
-    
-    const currentlyAssigned = screens.filter(s => 
-      playlist.assignedScreens.includes(s.id)
+  // Handle screen selection
+  const handleScreenSelect = useCallback((screenId: string, checked: boolean) => {
+    setSelectedScreens(prev => 
+      checked 
+        ? [...prev, screenId]
+        : prev.filter(id => id !== screenId)
     );
+  }, []);
 
-    if (currentlyAssigned.length === 0) {
-      toast.error("No screens are currently assigned to this playlist");
+  // Handle select all
+  const handleSelectAll = useCallback(() => {
+    const availableScreenIds = filteredScreens
+      .filter(screen => screen.status === 'online')
+      .map(screen => screen.id);
+    setSelectedScreens(availableScreenIds);
+  }, [filteredScreens]);
+
+  // Handle clear selection
+  const handleClearSelection = useCallback(() => {
+    setSelectedScreens([]);
+  }, []);
+
+  // Check for assignment conflicts
+  const checkConflicts = useCallback(() => {
+    const conflicts: AssignmentConflict[] = [];
+    
+    selectedScreens.forEach(screenId => {
+      const screen = mockScreens.find(s => s.id === screenId);
+      if (screen?.currentPlaylist && screen.currentPlaylistName) {
+        conflicts.push({
+          screenId: screen.id,
+          screenName: screen.name,
+          currentPlaylist: screen.currentPlaylist,
+          currentPlaylistName: screen.currentPlaylistName
+        });
+      }
+    });
+    
+    setAssignmentConflicts(conflicts);
+    return conflicts;
+  }, [selectedScreens]);
+
+  // Handle assignment
+  const handleAssign = useCallback(async () => {
+    if (!playlist || selectedScreens.length === 0) return;
+
+    const conflicts = checkConflicts();
+    
+    if (conflicts.length > 0 && !showConflicts) {
+      setShowConflicts(true);
       return;
     }
 
-    toast.success(`Playlist unassigned from ${currentlyAssigned.length} screen(s)`);
-  };
+    setIsAssigning(true);
+
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      onAssign?.(selectedScreens);
+      toast.success(`Playlist "${playlist.name}" assigned to ${selectedScreens.length} screen${selectedScreens.length > 1 ? 's' : ''}`);
+      onClose();
+    } catch (error) {
+      toast.error('Failed to assign playlist to screens');
+    } finally {
+      setIsAssigning(false);
+    }
+  }, [playlist, selectedScreens, showConflicts, checkConflicts, onAssign, onClose]);
+
+  // Handle conflict resolution
+  const handleProceedWithConflicts = useCallback(() => {
+    setShowConflicts(false);
+    handleAssign();
+  }, [handleAssign]);
 
   if (!playlist) return null;
 
   const onlineScreens = filteredScreens.filter(s => s.status === 'online');
-  const currentlyAssigned = screens.filter(s => playlist.assignedScreens.includes(s.id));
+  const currentlyAssigned = mockScreens.filter(s => playlist.assignedScreens.includes(s.id));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -171,24 +327,36 @@ export function PlaylistAssignment({ playlist, isOpen, onClose }: PlaylistAssign
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {currentlyAssigned.map(screen => (
-                    <div key={screen.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                      {getStatusIcon(screen.status)}
-                      <div className="flex-1">
-                        <p className="font-medium">{screen.name}</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {screen.location}
-                        </p>
+                  {currentlyAssigned.map(screen => {
+                    const statusInfo = getStatusInfo(screen.status);
+                    const StatusIcon = statusInfo.icon;
+                    return (
+                      <div key={screen.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                        <div className={`p-2 rounded-full ${statusInfo.bg}`}>
+                          <StatusIcon className={`h-4 w-4 ${statusInfo.color}`} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">{screen.name}</p>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {screen.location}
+                          </p>
+                        </div>
+                        <Badge variant="secondary">
+                          {statusInfo.label}
+                        </Badge>
                       </div>
-                      <Badge className={getStatusColor(screen.status)}>
-                        {screen.status}
-                      </Badge>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="mt-4">
-                  <Button variant="outline" onClick={handleUnassign}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      // TODO: Implement unassign functionality
+                      console.log('Unassign from all screens');
+                    }}
+                  >
                     Unassign from All Screens
                   </Button>
                 </div>
@@ -207,8 +375,8 @@ export function PlaylistAssignment({ playlist, isOpen, onClose }: PlaylistAssign
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search screens..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={filters.search}
+                  onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                   className="pl-9"
                 />
               </div>
@@ -247,7 +415,15 @@ export function PlaylistAssignment({ playlist, isOpen, onClose }: PlaylistAssign
                       disabled={screen.status !== 'online'}
                     />
                     
-                    {getStatusIcon(screen.status)}
+                    {(() => {
+                      const statusInfo = getStatusInfo(screen.status);
+                      const StatusIcon = statusInfo.icon;
+                      return (
+                        <div className={`p-2 rounded-full ${statusInfo.bg}`}>
+                          <StatusIcon className={`h-4 w-4 ${statusInfo.color}`} />
+                        </div>
+                      );
+                    })()}
                     
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
@@ -260,13 +436,13 @@ export function PlaylistAssignment({ playlist, isOpen, onClose }: PlaylistAssign
                       </p>
                       {screen.currentPlaylist && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Current: {screen.currentPlaylist}
+                          Current: {screen.currentPlaylistName || screen.currentPlaylist}
                         </p>
                       )}
                     </div>
                     
-                    <Badge className={getStatusColor(screen.status)}>
-                      {screen.status}
+                    <Badge variant="secondary">
+                      {getStatusInfo(screen.status).label}
                     </Badge>
                   </div>
                 ))}

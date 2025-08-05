@@ -32,6 +32,9 @@ import {
   type UploadMetadata,
 } from '../services/mediaAPI';
 
+import { socketService } from '../services/socketService';
+import type { MediaEvent } from '../services/socketService';
+
 // Re-export types from API service for backward compatibility
 export type {
   MediaItem,
@@ -59,6 +62,10 @@ interface MediaStoreState {
   searchDebounceTimer: NodeJS.Timeout | null;
   lastFetch: number;
   cacheTimeout: number;
+  
+  // Real-time integration
+  socketInitialized: boolean;
+  realtimeUpdatesPaused: boolean;
 }
 
 interface MediaStore extends MediaStoreState {
@@ -90,6 +97,15 @@ interface MediaStore extends MediaStoreState {
   // Actions - Cache Management
   invalidateCache: () => void;
   isDataStale: () => boolean;
+  
+  // Real-time Socket Integration
+  initializeSocket: () => Promise<void>;
+  pauseRealtimeUpdates: (paused: boolean) => void;
+  
+  // Real-time event handlers (internal)
+  handleMediaUploaded: (event: MediaEvent) => void;
+  handleMediaDeleted: (event: MediaEvent) => void;
+  handleMediaUpdated: (event: MediaEvent) => void;
 }
 
 // Default values
@@ -142,6 +158,8 @@ export const useMediaStore = create<MediaStore>()(
       searchDebounceTimer: null,
       lastFetch: 0,
       cacheTimeout: CACHE_TIMEOUT,
+      socketInitialized: false,
+      realtimeUpdatesPaused: false,
 
       // API Actions
       fetchMedia: async (params = {}) => {
@@ -226,6 +244,11 @@ export const useMediaStore = create<MediaStore>()(
           // Clear progress after delay
           setTimeout(() => get().clearUploadProgress(fileId), 2000);
           
+          // Emit socket event
+          if (socketService.isConnected()) {
+            socketService.emitMediaUploaded(newMedia);
+          }
+          
           return newMedia;
         } catch (error) {
           const errorMessage = isMediaApiError(error) 
@@ -263,6 +286,11 @@ export const useMediaStore = create<MediaStore>()(
               : state.selectedMedia,
             loading: false,
           }));
+
+          // Emit socket event
+          if (socketService.isConnected()) {
+            socketService.emitMediaUpdated(id, updatedMedia);
+          }
         } catch (error) {
           const errorMessage = isMediaApiError(error) 
             ? getMediaErrorMessage(error)
@@ -309,6 +337,11 @@ export const useMediaStore = create<MediaStore>()(
 
           await deleteMediaAPI(id);
           set({ loading: false });
+
+          // Emit socket event
+          if (socketService.isConnected()) {
+            socketService.emitMediaDeleted(id);
+          }
         } catch (error) {
           const errorMessage = isMediaApiError(error) 
             ? getMediaErrorMessage(error)
@@ -511,6 +544,133 @@ export const useMediaStore = create<MediaStore>()(
       isDataStale: () => {
         const state = get();
         return !state.lastFetch || Date.now() - state.lastFetch > state.cacheTimeout;
+      },
+
+      // ============================
+      // Real-time Socket Integration
+      // ============================
+
+      initializeSocket: async () => {
+        const state = get();
+        if (state.socketInitialized) {
+          return;
+        }
+
+        try {
+          await socketService.connect();
+          
+          // Only set up event listeners if successfully connected
+          if (socketService.isConnected()) {
+            // Set up event listeners for media events
+            socketService.on('media:uploaded', get().handleMediaUploaded);
+            socketService.on('media:deleted', get().handleMediaDeleted);
+            socketService.on('media:updated', get().handleMediaUpdated);
+            
+            console.log('Socket initialized for media store');
+          } else {
+            console.log('Socket connection skipped for media store - no authentication token');
+          }
+          
+          set({ socketInitialized: true });
+        } catch (error) {
+          console.error('Failed to initialize socket for media store:', error);
+          // Don't set error state for missing authentication - that's expected when not logged in
+          if (!error.message.includes('authentication') && !error.message.includes('token')) {
+            set({ error: 'Failed to connect to real-time service' });
+          }
+          set({ socketInitialized: true }); // Still mark as initialized to prevent retries
+        }
+      },
+
+      pauseRealtimeUpdates: (paused) => {
+        set({ realtimeUpdatesPaused: paused });
+      },
+
+      // ============================
+      // Real-time Event Handlers
+      // ============================
+
+      handleMediaUploaded: (event) => {
+        const state = get();
+        
+        if (state.realtimeUpdatesPaused) return;
+
+        const { media, uploadedBy } = event;
+        
+        if (!media) return;
+
+        // Add the new media to the list if it's not from this user
+        const currentUserId = localStorage.getItem('userId'); // Assuming we store userId
+        if (uploadedBy !== currentUserId) {
+          set((state) => ({
+            media: [media, ...state.media],
+            statistics: {
+              ...state.statistics,
+              totalFiles: state.statistics.totalFiles + 1,
+              totalSize: state.statistics.totalSize + (media.fileSize || 0),
+              imageCount: media.type === 'image' 
+                ? state.statistics.imageCount + 1 
+                : state.statistics.imageCount,
+              videoCount: media.type === 'video' 
+                ? state.statistics.videoCount + 1 
+                : state.statistics.videoCount,
+            }
+          }));
+
+          console.log(`New media uploaded by ${event.uploadedByEmail || uploadedBy}: ${media.filename}`);
+        }
+      },
+
+      handleMediaDeleted: (event) => {
+        const state = get();
+        
+        if (state.realtimeUpdatesPaused) return;
+
+        const { mediaId, deletedBy } = event;
+        
+        // Remove the media from the list
+        const mediaToDelete = state.media.find(m => m.id === mediaId);
+        if (mediaToDelete) {
+          set((state) => ({
+            media: state.media.filter(m => m.id !== mediaId),
+            selectedMedia: state.selectedMedia?.id === mediaId ? null : state.selectedMedia,
+            statistics: {
+              ...state.statistics,
+              totalFiles: Math.max(0, state.statistics.totalFiles - 1),
+              totalSize: Math.max(0, state.statistics.totalSize - (mediaToDelete.fileSize || 0)),
+              imageCount: mediaToDelete.type === 'image' 
+                ? Math.max(0, state.statistics.imageCount - 1)
+                : state.statistics.imageCount,
+              videoCount: mediaToDelete.type === 'video' 
+                ? Math.max(0, state.statistics.videoCount - 1)
+                : state.statistics.videoCount,
+            }
+          }));
+
+          console.log(`Media deleted by ${event.deletedByEmail || deletedBy}: ${mediaToDelete.filename}`);
+        }
+      },
+
+      handleMediaUpdated: (event) => {
+        const state = get();
+        
+        if (state.realtimeUpdatesPaused) return;
+
+        const { mediaId, media: updatedData, updatedBy } = event;
+        
+        if (!updatedData) return;
+
+        // Update the media in the list
+        set((state) => ({
+          media: state.media.map(m => 
+            m.id === mediaId ? { ...m, ...updatedData } : m
+          ),
+          selectedMedia: state.selectedMedia?.id === mediaId 
+            ? { ...state.selectedMedia, ...updatedData }
+            : state.selectedMedia
+        }));
+
+        console.log(`Media updated by ${event.updatedByEmail || updatedBy}: ${updatedData.filename || mediaId}`);
       },
     })),
     {
