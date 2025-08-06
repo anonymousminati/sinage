@@ -344,6 +344,7 @@ export function PlaylistEditor() {
     loading, 
     error,
     fetchPlaylists,
+    fetchPlaylist,
     createPlaylist,
     updatePlaylist,
     deletePlaylist,
@@ -580,7 +581,16 @@ export function PlaylistEditor() {
         }))
       });
       
+      console.log('🔄 Before reorder - current items order:', currentPlaylist.items.map((item, idx) => ({ idx, id: item.id, order: item.order, name: extractMediaFromItem(item)?.originalName })));
+      
       await reorderPlaylistItemsByOrder(currentPlaylist.id, orderUpdates);
+      
+      // Refresh current playlist data to ensure UI is updated with latest order
+      console.log('🔄 Refreshing current playlist after reorder...');
+      await fetchPlaylist(currentPlaylist.id, true);
+      
+      console.log('🔄 After refresh - current items order:', currentPlaylist?.items.map((item, idx) => ({ idx, id: item.id, order: item.order, name: extractMediaFromItem(item)?.originalName })) || []);
+      
       toast.success("Items reordered");
     } catch (error) {
       console.error('Failed to reorder items:', error);
@@ -1288,7 +1298,10 @@ export function PlaylistEditor() {
                         items={currentPlaylist.items.sort((a, b) => a.order - b.order).map(item => `playlist-item-${item.id}`)}
                         strategy={verticalListSortingStrategy}
                       >
-                        <div className="space-y-2">
+                        <div 
+                          key={`playlist-items-${currentPlaylist.items.map(i => `${i.id}:${i.order}`).join('-')}`}
+                          className="space-y-2"
+                        >
                           {currentPlaylist.items
                             .sort((a, b) => a.order - b.order)
                             .map((item, index) => (
