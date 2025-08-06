@@ -16,6 +16,7 @@ import { PlaylistPreview } from "./PlaylistPreview";
 import { PlaylistAssignment } from "./PlaylistAssignment";
 import { PlaylistSettings } from "./PlaylistSettings";
 import { ConflictResolutionDialog } from "./ConflictResolutionDialog";
+import { cn } from "../lib/utils";
 import { 
   Search, 
   Plus, 
@@ -32,7 +33,9 @@ import {
   Settings,
   Loader2,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -99,9 +102,22 @@ interface SortablePlaylistItemProps {
   isSelected: boolean;
   onSelect: (item: PlaylistItem) => void;
   onRemove: (itemId: string) => void;
+  onMoveUp?: (itemId: string) => void;
+  onMoveDown?: (itemId: string) => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 }
 
-function SortablePlaylistItem({ item, isSelected, onSelect, onRemove }: SortablePlaylistItemProps) {
+function SortablePlaylistItem({ 
+  item, 
+  isSelected, 
+  onSelect, 
+  onRemove, 
+  onMoveUp, 
+  onMoveDown, 
+  canMoveUp, 
+  canMoveDown 
+}: SortablePlaylistItemProps) {
   const {
     attributes,
     listeners,
@@ -247,7 +263,44 @@ function SortablePlaylistItem({ item, isSelected, onSelect, onRemove }: Sortable
         </Badge>
         <span className="text-xs text-muted-foreground mt-1">Order</span>
       </div>
+
+      {/* Move Up/Down Buttons (show on hover) */}
+      <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoveUp?.(item.id || item._id);
+          }}
+          disabled={!canMoveUp}
+          className={cn(
+            "h-6 w-6 p-0",
+            canMoveUp ? "hover:bg-blue-100 hover:text-blue-600" : "cursor-not-allowed opacity-50"
+          )}
+          title="Move up"
+        >
+          <ChevronUp className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoveDown?.(item.id || item._id);
+          }}
+          disabled={!canMoveDown}
+          className={cn(
+            "h-6 w-6 p-0",
+            canMoveDown ? "hover:bg-blue-100 hover:text-blue-600" : "cursor-not-allowed opacity-50"
+          )}
+          title="Move down"
+        >
+          <ChevronDown className="h-3 w-3" />
+        </Button>
+      </div>
       
+      {/* Delete Button */}
       <Button
         variant="ghost"
         size="sm"
@@ -255,7 +308,8 @@ function SortablePlaylistItem({ item, isSelected, onSelect, onRemove }: Sortable
           e.stopPropagation();
           onRemove(item.id);
         }}
-        className="opacity-0 group-hover:opacity-100 transition-opacity"
+        className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-600"
+        title="Remove from playlist"
       >
         <Trash2 className="h-4 w-4" />
       </Button>
@@ -533,6 +587,86 @@ export function PlaylistEditor() {
       toast.error("Failed to reorder items");
     }
   }, [currentPlaylist, reorderPlaylistItemsByOrder]);
+
+  // Helper function to safely extract media data (needed for logging)
+  const extractMediaFromItem = useCallback((item: PlaylistItem): MediaItem | null => {
+    if (!item) return null;
+    
+    // First try: populated mediaId (backend populates this directly)
+    if (typeof item.mediaId === 'object' && item.mediaId !== null) {
+      return item.mediaId as MediaItem;
+    }
+    
+    // Second try: media property (fallback)
+    if (item.media && typeof item.media === 'object') {
+      return item.media;
+    }
+    
+    // Third try: if mediaId is an object but not detected by typeof check
+    if (item.mediaId && typeof item.mediaId !== 'string' && typeof item.mediaId !== 'undefined') {
+      return item.mediaId as MediaItem;
+    }
+    
+    return null;
+  }, []);
+
+  // Handle moving an item up one position
+  const handleMoveUp = useCallback(async (itemId: string) => {
+    if (!currentPlaylist) return;
+    
+    const sortedItems = [...currentPlaylist.items].sort((a, b) => a.order - b.order);
+    const itemIndex = sortedItems.findIndex(item => (item.id || item._id) === itemId);
+    
+    if (itemIndex <= 0) return; // Already at top or not found
+    
+    // Swap with previous item
+    const newItems = [...sortedItems];
+    [newItems[itemIndex - 1], newItems[itemIndex]] = [newItems[itemIndex], newItems[itemIndex - 1]];
+    
+    // Update orders
+    const reorderedItems = newItems.map((item, index) => ({
+      ...item,
+      order: index + 1
+    }));
+    
+    console.log('🔼 Moving item up:', {
+      itemId,
+      fromIndex: itemIndex,
+      toIndex: itemIndex - 1,
+      itemName: extractMediaFromItem(sortedItems[itemIndex])?.originalName
+    });
+    
+    await handleReorderItems(reorderedItems);
+  }, [currentPlaylist, handleReorderItems, extractMediaFromItem]);
+
+  // Handle moving an item down one position
+  const handleMoveDown = useCallback(async (itemId: string) => {
+    if (!currentPlaylist) return;
+    
+    const sortedItems = [...currentPlaylist.items].sort((a, b) => a.order - b.order);
+    const itemIndex = sortedItems.findIndex(item => (item.id || item._id) === itemId);
+    
+    if (itemIndex >= sortedItems.length - 1 || itemIndex === -1) return; // Already at bottom or not found
+    
+    // Swap with next item
+    const newItems = [...sortedItems];
+    [newItems[itemIndex], newItems[itemIndex + 1]] = [newItems[itemIndex + 1], newItems[itemIndex]];
+    
+    // Update orders
+    const reorderedItems = newItems.map((item, index) => ({
+      ...item,
+      order: index + 1
+    }));
+    
+    console.log('🔽 Moving item down:', {
+      itemId,
+      fromIndex: itemIndex,
+      toIndex: itemIndex + 1,
+      itemName: extractMediaFromItem(sortedItems[itemIndex])?.originalName
+    });
+    
+    await handleReorderItems(reorderedItems);
+  }, [currentPlaylist, handleReorderItems, extractMediaFromItem]);
 
   const handleDuplicatePlaylist = useCallback(async () => {
     if (!currentPlaylist) return;
@@ -1164,6 +1298,10 @@ export function PlaylistEditor() {
                               isSelected={selectedItem?.id === item.id}
                               onSelect={setSelectedItem}
                               onRemove={handleRemoveFromPlaylist}
+                              onMoveUp={handleMoveUp}
+                              onMoveDown={handleMoveDown}
+                              canMoveUp={index > 0}
+                              canMoveDown={index < currentPlaylist.items.length - 1}
                             />
                           ))}
                         </div>
