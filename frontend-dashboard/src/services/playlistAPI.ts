@@ -420,6 +420,35 @@ export async function reorderPlaylistItems(
 }
 
 /**
+ * Reorder playlist items by order updates (alternative endpoint)
+ * This function matches the /reorder endpoint used by PlaylistAssignment component
+ * 
+ * @param playlistId Playlist ID
+ * @param itemOrderUpdates Array of item ID and order pairs
+ * @returns Promise<void> Reorder confirmation
+ */
+export async function reorderPlaylistItemsByOrder(
+  playlistId: string,
+  itemOrderUpdates: {id: string, order: number}[]
+): Promise<void> {
+  const url = `${API_BASE_URL}/playlists/${playlistId}/reorder`;
+  
+  try {
+    const response = await fetchWithRetry(url, {
+      method: 'PUT',
+      body: JSON.stringify({
+        items: itemOrderUpdates
+      }),
+    });
+    
+    await processResponse(response);
+  } catch (error) {
+    console.error('Failed to reorder playlist items by order:', error);
+    throw error;
+  }
+}
+
+/**
  * Update playlist item settings
  * 
  * @param playlistId Playlist ID
@@ -720,6 +749,7 @@ export const playlistAPI = {
   addMediaToPlaylist,
   removeMediaFromPlaylist,
   reorderPlaylistItems,
+  reorderPlaylistItemsByOrder,
   updatePlaylistItem,
   
   // Screen assignment

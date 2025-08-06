@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -42,6 +42,7 @@ import {
   useSensors,
   DragOverlay,
   closestCenter,
+  useDroppable,
 } from '@dnd-kit/core';
 import type {
   DragEndEvent,
@@ -64,6 +65,33 @@ import { useMediaStore } from '../stores/useMediaStore';
 import { socketService } from '../services/socketService';
 import { useSocketStatus } from '../hooks/useSocketStatus';
 import type { Playlist, PlaylistItem, MediaItem } from '../types';
+
+// Droppable Playlist Container Component
+interface DroppablePlaylistProps {
+  children: React.ReactNode;
+  activeId?: string;
+}
+
+function DroppablePlaylist({ children, activeId }: DroppablePlaylistProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'playlist-drop-zone',
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex-1 border-2 border-dashed rounded-lg p-4 transition-colors ${
+        activeId && activeId.startsWith('media-') 
+          ? 'border-primary bg-primary/5' 
+          : isOver 
+          ? 'border-primary bg-primary/10'
+          : 'border-muted-foreground/25'
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
 
 // Component for individual sortable playlist items
 interface SortablePlaylistItemProps {
@@ -89,6 +117,30 @@ function SortablePlaylistItem({ item, isSelected, onSelect, onRemove }: Sortable
     opacity: isDragging ? 0.5 : 1,
   };
 
+  // Helper function to safely extract media data from playlist item
+  const extractMediaFromItem = (item: PlaylistItem): MediaItem | null => {
+    if (!item) return null;
+    
+    // First try: populated mediaId (backend populates this directly)
+    if (typeof item.mediaId === 'object' && item.mediaId !== null) {
+      return item.mediaId as MediaItem;
+    }
+    
+    // Second try: media property (fallback)
+    if (item.media && typeof item.media === 'object') {
+      return item.media;
+    }
+    
+    // Third try: if mediaId is an object but not detected by typeof check
+    if (item.mediaId && typeof item.mediaId !== 'string' && typeof item.mediaId !== 'undefined') {
+      return item.mediaId as MediaItem;
+    }
+    
+    return null;
+  };
+
+  const media = extractMediaFromItem(item);
+
   const formatDuration = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -98,11 +150,11 @@ function SortablePlaylistItem({ item, isSelected, onSelect, onRemove }: Sortable
   const getFileIcon = (type: string) => {
     switch (type) {
       case 'image':
-        return <Image className="h-4 w-4" />;
+        return <Image className="h-4 w-4 text-blue-500" />;
       case 'video':
-        return <Video className="h-4 w-4" />;
+        return <Video className="h-4 w-4 text-purple-500" />;
       default:
-        return <FileText className="h-4 w-4" />;
+        return <FileText className="h-4 w-4 text-gray-500" />;
     }
   };
 
@@ -121,39 +173,79 @@ function SortablePlaylistItem({ item, isSelected, onSelect, onRemove }: Sortable
         className="cursor-grab hover:cursor-grabbing p-1 -ml-1 text-muted-foreground hover:text-foreground transition-colors"
       >
         <svg width="12" height="20" viewBox="0 0 12 20" className="text-current">
-          <circle cx="4" cy="4" r="1" fill="currentColor" />
-          <circle cx="8" cy="4" r="1" fill="currentColor" />
-          <circle cx="4" cy="10" r="1" fill="currentColor" />
-          <circle cx="8" cy="10" r="1" fill="currentColor" />
-          <circle cx="4" cy="16" r="1" fill="currentColor" />
-          <circle cx="8" cy="16" r="1" fill="currentColor" />
+          <circle key="c1" cx="4" cy="4" r="1" fill="currentColor" />
+          <circle key="c2" cx="8" cy="4" r="1" fill="currentColor" />
+          <circle key="c3" cx="4" cy="10" r="1" fill="currentColor" />
+          <circle key="c4" cx="8" cy="10" r="1" fill="currentColor" />
+          <circle key="c5" cx="4" cy="16" r="1" fill="currentColor" />
+          <circle key="c6" cx="8" cy="16" r="1" fill="currentColor" />
         </svg>
       </div>
       
-      <div className="w-12 h-12 rounded border overflow-hidden bg-muted flex-shrink-0">
-        <img
-          src={item.media?.secureUrl || item.media?.url}
-          alt={item.media?.originalName || 'Media item'}
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
+      {/* Media Thumbnail */}
+      <div className="w-12 h-12 rounded border overflow-hidden bg-muted flex-shrink-0 relative">
+        {media?.secureUrl || media?.url ? (
+          <img
+            src={media.secureUrl || media.url}
+            alt={media.originalName || 'Media item'}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={(e) => {
+              e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Im0xNSAxMi0zLTMtNiA2VjdoMTJ2OGgtM1oiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+';
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            {getFileIcon(media?.type || 'unknown')}
+          </div>
+        )}
+        
+        {/* Media Type Badge */}
+        <div className="absolute top-0 right-0 -translate-y-1 translate-x-1">
+          <Badge variant="secondary" className="text-xs px-1 py-0">
+            {media?.type?.toUpperCase() || 'UNK'}
+          </Badge>
+        </div>
       </div>
       
+      {/* Media Details */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          {getFileIcon(item.media?.type || 'image')}
-          <p className="font-medium text-sm truncate">{item.media?.originalName}</p>
+          {getFileIcon(media?.type || 'unknown')}
+          <p className="font-medium text-sm truncate">
+            {media?.originalName || `Item ${item.order || 0}`}
+          </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Clock className="h-3 w-3" />
-          <span>{formatDuration(item.duration || item.media?.duration || 0)}</span>
-          {item.media?.tags && item.media.tags.length > 0 && (
-            <>
-              <span>•</span>
-              <span className="truncate">{item.media.tags.slice(0, 2).join(', ')}</span>
-            </>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {formatDuration(item.duration || media?.duration || media?.videoDuration || 0)}
+          </span>
+          {media?.fileSize && (
+            <span>{media.formattedFileSize || `${Math.round(media.fileSize / 1024)} KB`}</span>
+          )}
+          {media?.format && (
+            <Badge variant="outline" className="text-xs px-1 py-0">
+              {media.format.toUpperCase()}
+            </Badge>
           )}
         </div>
+        {media?.tags && media.tags.length > 0 && (
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-xs text-muted-foreground">Tags:</span>
+            <span className="text-xs text-muted-foreground truncate">
+              {media.tags.slice(0, 3).join(', ')}
+            </span>
+          </div>
+        )}
+      </div>
+      
+      {/* Order Number */}
+      <div className="flex flex-col items-center mr-2">
+        <Badge variant="outline" className="text-xs">
+          #{item.order || 0}
+        </Badge>
+        <span className="text-xs text-muted-foreground mt-1">Order</span>
       </div>
       
       <Button
@@ -206,6 +298,7 @@ export function PlaylistEditor() {
     addMediaToPlaylist,
     removeFromPlaylist,
     reorderPlaylistItems,
+    reorderPlaylistItemsByOrder,
     clearError,
     initializeSocket,
     subscribeToPlaylistEvents,
@@ -395,13 +488,51 @@ export function PlaylistEditor() {
     if (!currentPlaylist) return;
     
     try {
-      await reorderPlaylistItems(currentPlaylist.id, newItems);
+      const orderUpdates = newItems.map((item, index) => {
+        // Try to find the correct ID field - could be id, _id, or another field
+        const itemId = item.id || item._id || item.playlistItemId;
+        return {
+          id: itemId,
+          order: index + 1
+        };
+      });
+      
+      // Debug the raw item data to understand the structure
+      console.log('🔍 Raw playlist items before reorder:', newItems.map((item, index) => ({
+        index,
+        item: {
+          id: item.id,
+          idType: typeof item.id,
+          idLength: item.id ? item.id.length : 0,
+          order: item.order,
+          mediaId: item.mediaId,
+          mediaIdType: typeof item.mediaId,
+          keys: Object.keys(item)
+        }
+      })));
+      
+      console.log('🎵 PlaylistEditor reordering items:', {
+        playlistId: currentPlaylist.id,
+        orderUpdates,
+        originalOrder: currentPlaylist.items.map(i => ({ id: i.id, order: i.order })),
+        // Debug ID format validation
+        idValidation: orderUpdates.map(item => ({
+          id: item.id,
+          idType: typeof item.id,
+          isValidObjectId: item.id ? /^[0-9a-fA-F]{24}$/.test(item.id) : false,
+          length: item.id ? item.id.length : 0,
+          order: item.order,
+          orderType: typeof item.order
+        }))
+      });
+      
+      await reorderPlaylistItemsByOrder(currentPlaylist.id, orderUpdates);
       toast.success("Items reordered");
     } catch (error) {
       console.error('Failed to reorder items:', error);
       toast.error("Failed to reorder items");
     }
-  }, [currentPlaylist, reorderPlaylistItems]);
+  }, [currentPlaylist, reorderPlaylistItemsByOrder]);
 
   const handleDuplicatePlaylist = useCallback(async () => {
     if (!currentPlaylist) return;
@@ -564,6 +695,34 @@ export function PlaylistEditor() {
     if (activeId.startsWith('media-') && overId === 'playlist-drop-zone') {
       const mediaId = activeId.replace('media-', '');
       await handleAddMediaToPlaylist(mediaId);
+      return;
+    }
+    
+    // Handle playlist item dropped to general playlist area (append to end)
+    if (activeId.startsWith('playlist-item-') && overId === 'playlist-drop-zone' && currentPlaylist) {
+      const items = [...currentPlaylist.items].sort((a, b) => a.order - b.order);
+      const activeIndex = items.findIndex(item => `playlist-item-${item.id}` === activeId);
+      
+      if (activeIndex !== -1) {
+        // Move the item to the end of the list
+        const movedItem = items[activeIndex];
+        const newItems = [
+          ...items.slice(0, activeIndex),
+          ...items.slice(activeIndex + 1),
+          movedItem
+        ].map((item, index) => ({
+          ...item,
+          order: index + 1
+        }));
+        
+        console.log('🎵 Moving playlist item to end:', {
+          activeId,
+          itemName: movedItem.media?.originalName,
+          newPosition: newItems.length
+        });
+        
+        await handleReorderItems(newItems);
+      }
       return;
     }
 
@@ -977,25 +1136,7 @@ export function PlaylistEditor() {
               {currentPlaylist ? (
                 <div className="flex-1 flex flex-col">
                   {/* Drop Zone */}
-                  <div
-                    id="playlist-drop-zone"
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = 'copy';
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const mediaId = e.dataTransfer.getData('text/plain');
-                      if (mediaId.startsWith('media-')) {
-                        handleAddMediaToPlaylist(mediaId.replace('media-', ''));
-                      }
-                    }}
-                    className={`flex-1 border-2 border-dashed rounded-lg p-4 transition-colors ${
-                      activeId && activeId.startsWith('media-') 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-muted-foreground/25'
-                    }`}
-                  >
+                  <DroppablePlaylist activeId={activeId}>
                     {currentPlaylist.items.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-center">
                         <div>
@@ -1010,13 +1151,15 @@ export function PlaylistEditor() {
                       </div>
                     ) : (
                       <SortableContext 
-                        items={currentPlaylist.items.map(item => `playlist-item-${item.id}`)}
+                        items={currentPlaylist.items.sort((a, b) => a.order - b.order).map(item => `playlist-item-${item.id}`)}
                         strategy={verticalListSortingStrategy}
                       >
                         <div className="space-y-2">
-                          {currentPlaylist.items.map((item, index) => (
+                          {currentPlaylist.items
+                            .sort((a, b) => a.order - b.order)
+                            .map((item, index) => (
                             <SortablePlaylistItem
-                              key={item.id}
+                              key={`playlist-item-${item.id}-${index}`}
                               item={item}
                               isSelected={selectedItem?.id === item.id}
                               onSelect={setSelectedItem}
@@ -1026,19 +1169,19 @@ export function PlaylistEditor() {
                         </div>
                       </SortableContext>
                     )}
-                  </div>
 
-                  {/* Timeline */}
-                  {currentPlaylist.items.length > 0 && (
-                    <div className="mt-4">
-                      <PlaylistTimeline 
-                        playlist={currentPlaylist}
-                        onSeek={(time) => {
-                          // Handle timeline seek if needed
-                        }}
-                      />
-                    </div>
-                  )}
+                    {/* Timeline */}
+                    {currentPlaylist.items.length > 0 && (
+                      <div className="mt-4">
+                        <PlaylistTimeline 
+                          playlist={currentPlaylist}
+                          onSeek={(time) => {
+                            // Handle timeline seek if needed
+                          }}
+                        />
+                      </div>
+                    )}
+                  </DroppablePlaylist>
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-center">

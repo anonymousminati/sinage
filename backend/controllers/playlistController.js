@@ -82,6 +82,13 @@ const reorderItemsSchema = Joi.object({
   itemOrder: Joi.array().items(Joi.string().pattern(/^[0-9a-fA-F]{24}$/)).min(1).required()
 });
 
+const reorderItemsUpdateSchema = Joi.object({
+  items: Joi.array().items(Joi.object({
+    id: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(),
+    order: Joi.number().min(0).required()
+  })).min(1).required()
+});
+
 const assignScreensSchema = Joi.object({
   screenIds: Joi.array().items(Joi.string().pattern(/^[0-9a-fA-F]{24}$/)).min(1).required(),
   action: Joi.string().valid('assign', 'unassign').default('assign')
@@ -1201,6 +1208,336 @@ const reorderPlaylistItems = async (req, res) => {
 };
 
 /**
+ * Reorder specific playlist items with granular control
+ * @route PUT /api/playlists/:id/reorder
+ * @access Private
+ */
+const reorderPlaylistItemsUpdate = async (req, res) => {
+  const startTime = Date.now();
+  
+  try {
+    const { id } = req.params;
+
+    winston.info('Starting playlist item reorder update:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      requestBody: req.body,
+      timestamp: new Date().toISOString()
+    });
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      winston.warn('Invalid playlist ID provided:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid playlist ID'
+      });
+    }
+
+    // Validate request body
+    const { error, value } = reorderItemsUpdateSchema.validate(req.body);
+    if (error) {
+      winston.warn('Validation failed:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id,
+        validationErrors: error.details.map(detail => ({
+          field: detail.path.join('.'),
+          message: detail.message,
+          value: detail.context?.value
+        }))
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.details.map(detail => detail.message)
+      });
+    }
+
+    const { items } = value;
+
+    winston.debug('Validation passed, processing items:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      itemsToUpdate: items.length,
+      items
+    });
+
+    // Find playlist and verify edit permission
+    const playlist = await Playlist.findOne({
+      _id: id,
+      $or: [
+        { owner: req.user.id },
+        { 'collaborators.user': req.user.id, 'collaborators.permission': { $in: ['edit', 'admin'] } }
+      ],
+      isActive: true
+    });
+
+    if (!playlist) {
+      winston.warn('Playlist not found or access denied:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id
+      });
+      return res.status(404).json({
+        success: false,
+        message: 'Playlist not found or insufficient permissions'
+      });
+    }
+
+    winston.debug('Playlist found, current items:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      currentItemCount: playlist.items.length,
+      currentItems: playlist.items.map(item => ({
+        id: item._id,
+        mediaId: item.mediaId,
+        currentOrder: item.order
+      }))
+    });
+
+    // Validate that all items exist in the playlist
+    const playlistItemIds = playlist.items.map(item => item._id.toString());
+    const requestedItemIds = items.map(item => item.id);
+    const invalidItems = requestedItemIds.filter(itemId => !playlistItemIds.includes(itemId));
+
+    if (invalidItems.length > 0) {
+      winston.warn('Invalid item IDs provided:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id,
+        invalidItems,
+        validItemIds: playlistItemIds
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Some items do not belong to this playlist',
+        invalidItems
+      });
+    }
+
+    // Validate order values don't conflict with existing items not being updated
+    const updatedItemIds = new Set(requestedItemIds);
+    const unchangedItems = playlist.items.filter(item => !updatedItemIds.has(item._id.toString()));
+    const unchangedOrders = unchangedItems.map(item => item.order);
+    const requestedOrders = items.map(item => item.order);
+    
+    // Check for order conflicts
+    const conflictingOrders = requestedOrders.filter(order => unchangedOrders.includes(order));
+    if (conflictingOrders.length > 0) {
+      winston.warn('Order conflicts detected:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id,
+        conflictingOrders,
+        unchangedOrders,
+        requestedOrders
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Order values conflict with existing items',
+        conflictingOrders
+      });
+    }
+
+    // Check for duplicate orders in the request
+    const duplicateOrders = requestedOrders.filter((order, index, arr) => arr.indexOf(order) !== index);
+    if (duplicateOrders.length > 0) {
+      winston.warn('Duplicate orders in request:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id,
+        duplicateOrders
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Duplicate order values are not allowed',
+        duplicateOrders
+      });
+    }
+
+    // Store original values for debugging and rollback
+    const originalItemStates = playlist.items.map(item => ({
+      id: item._id.toString(),
+      order: item.order,
+      mediaId: item.mediaId
+    }));
+
+    winston.debug('Original item states before update:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      originalItemStates
+    });
+
+    // Apply the order updates
+    let updatedCount = 0;
+    const updateResults = [];
+
+    items.forEach(updateItem => {
+      const playlistItem = playlist.items.find(item => item._id.toString() === updateItem.id);
+      if (playlistItem) {
+        const oldOrder = playlistItem.order;
+        playlistItem.order = updateItem.order;
+        
+        updateResults.push({
+          itemId: updateItem.id,
+          mediaId: playlistItem.mediaId,
+          oldOrder,
+          newOrder: updateItem.order
+        });
+        
+        updatedCount++;
+
+        winston.debug(`Updated item order:`, {
+          service: 'playlist',
+          playlistId: id,
+          userId: req.user.id,
+          itemId: updateItem.id,
+          mediaId: playlistItem.mediaId,
+          oldOrder,
+          newOrder: updateItem.order
+        });
+      }
+    });
+
+    // Sort items by order to maintain consistency
+    playlist.items.sort((a, b) => a.order - b.order);
+
+    // Update last modified timestamp
+    playlist.lastModified = new Date();
+
+    winston.debug('Items updated, attempting to save:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      updatedCount,
+      isModified: playlist.isModified(),
+      modifiedPaths: playlist.modifiedPaths()
+    });
+
+    // Save the playlist with comprehensive error handling
+    try {
+      await playlist.save();
+      
+      // Recalculate totals after save (this happens in pre-save hook but let's log it)
+      winston.info('Playlist item orders updated successfully:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id,
+        updatedCount,
+        newTotalDuration: playlist.totalDuration,
+        newTotalItems: playlist.totalItems,
+        version: playlist.version,
+        saveTime: Date.now() - startTime
+      });
+
+    } catch (saveError) {
+      winston.error('Database save failed during reorder:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id,
+        error: saveError.message,
+        stack: saveError.stack,
+        originalStates: originalItemStates,
+        validationErrors: saveError.errors ? Object.keys(saveError.errors).map(key => ({
+          field: key,
+          message: saveError.errors[key].message,
+          value: saveError.errors[key].value
+        })) : null
+      });
+      throw saveError;
+    }
+
+    // Populate media data for response
+    await playlist.populate({
+      path: 'items.mediaId',
+      model: 'Media',
+      select: 'originalName url secureUrl type duration videoDuration fileSize format'
+    });
+
+    winston.info('Playlist item reorder completed successfully:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      updatedItemsCount: updatedCount,
+      totalTime: Date.now() - startTime
+    });
+
+    res.json({
+      success: true,
+      message: 'Playlist items reordered successfully',
+      data: {
+        playlist: {
+          id: playlist._id,
+          name: playlist.name,
+          totalItems: playlist.totalItems,
+          totalDuration: playlist.totalDuration,
+          version: playlist.version
+        },
+        updates: updateResults,
+        updatedCount,
+        items: playlist.items.map(item => ({
+          id: item._id,
+          mediaId: item.mediaId,
+          order: item.order,
+          duration: item.duration,
+          media: item.mediaId ? {
+            name: item.mediaId.originalName,
+            type: item.mediaId.type,
+            url: item.mediaId.secureUrl || item.mediaId.url
+          } : null
+        })).sort((a, b) => a.order - b.order)
+      }
+    });
+
+  } catch (error) {
+    const errorDetails = {
+      service: 'playlist',
+      playlistId: req.params.id,
+      userId: req.user?.id,
+      error: error.message,
+      errorType: error.constructor.name,
+      stack: error.stack,
+      processingTime: Date.now() - startTime
+    };
+
+    // Add specific error details for common error types
+    if (error.name === 'ValidationError') {
+      errorDetails.validationErrors = Object.keys(error.errors).map(key => ({
+        field: key,
+        message: error.errors[key].message,
+        value: error.errors[key].value,
+        kind: error.errors[key].kind
+      }));
+    } else if (error.name === 'MongoError' || error.name === 'MongoServerError') {
+      errorDetails.mongoError = {
+        code: error.code,
+        codeName: error.codeName
+      };
+    }
+
+    winston.error('Playlist item reorder failed:', errorDetails);
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reorder playlist items',
+      error: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        type: error.constructor.name,
+        details: errorDetails
+      } : 'Internal server error'
+    });
+  }
+};
+
+/**
  * Assign/unassign playlist to screens
  * @route POST /api/playlists/:id/assign
  * @access Private
@@ -1463,6 +1800,7 @@ module.exports = {
   addMediaToPlaylist,
   removeMediaFromPlaylist,
   reorderPlaylistItems,
+  reorderPlaylistItemsUpdate,
   assignPlaylistToScreens,
   getPlaylistAssignments,
   getPlaylistStats

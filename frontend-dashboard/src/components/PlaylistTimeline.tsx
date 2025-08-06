@@ -198,15 +198,16 @@ export function PlaylistTimeline({
             {/* Timeline Background */}
             <div className="flex h-12 bg-muted rounded-lg overflow-hidden border-2 border-transparent group-hover:border-primary/20 transition-all">
               {playlist.items.map((item, index) => {
+                const itemData = getItemDisplayData(item);
                 const widthPercentage = playlist.totalDuration > 0 
-                  ? ((item.duration || 0) / playlist.totalDuration) * 100 
+                  ? (itemData.duration / playlist.totalDuration) * 100 
                   : 0;
                 
                 return (
                   <div
-                    key={item.playlistItemId || item.id}
+                    key={`timeline-item-${item.id}-${index}`}
                     className={cn(
-                      getItemColor(item.type),
+                      getItemColor(itemData.type),
                       "flex items-center justify-center text-white text-xs font-medium relative group/item transition-all duration-200",
                       index === currentItemIndex && "ring-2 ring-white ring-inset"
                     )}
@@ -214,10 +215,10 @@ export function PlaylistTimeline({
                   >
                     {/* Item Content */}
                     <div className="flex items-center gap-1 px-2">
-                      {getItemIcon(item.type)}
+                      {getItemIcon(itemData.type)}
                       {widthPercentage > 20 && (
                         <span className="truncate">
-                          {formatDuration(item.duration || 0)}
+                          {formatDuration(itemData.duration)}
                         </span>
                       )}
                     </div>
@@ -225,12 +226,12 @@ export function PlaylistTimeline({
                     {/* Item Tooltip */}
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover/item:opacity-100 transition-opacity z-20 pointer-events-none">
                       <div className="bg-black text-white text-xs rounded-lg py-2 px-3 whitespace-nowrap shadow-lg">
-                        <div className="font-semibold">{item.name}</div>
+                        <div className="font-semibold">{itemData.name}</div>
                         <div className="text-gray-300">
-                          Duration: {formatDuration(item.duration || 0)}
+                          Duration: {formatDuration(itemData.duration)}
                         </div>
                         <div className="text-gray-300">
-                          Type: {item.type}
+                          Type: {itemData.type}
                         </div>
                       </div>
                     </div>

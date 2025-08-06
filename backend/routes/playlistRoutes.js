@@ -10,6 +10,7 @@ const {
   addMediaToPlaylist,
   removeMediaFromPlaylist,
   reorderPlaylistItems,
+  reorderPlaylistItemsUpdate,
   assignPlaylistToScreens,
   getPlaylistAssignments,
   getPlaylistStats
@@ -99,6 +100,14 @@ router.delete('/:id/items/:itemId', removeMediaFromPlaylist);
  * @body    itemOrder (array of item IDs in new order)
  */
 router.put('/:id/items/reorder', reorderPlaylistItems);
+
+/**
+ * @route   PUT /api/playlists/:id/reorder
+ * @desc    Reorder specific playlist items with granular control
+ * @access  Private (owner or editor/admin collaborator)
+ * @body    items (array of {id, order} objects for specific item updates)
+ */
+router.put('/:id/reorder', reorderPlaylistItemsUpdate);
 
 // ============================================================================
 // SCREEN ASSIGNMENT ROUTES

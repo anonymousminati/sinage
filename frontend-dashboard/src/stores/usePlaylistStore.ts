@@ -60,7 +60,6 @@ import type {
   PlaylistPagination,
   DragState,
   BulkPlaylistOperation,
-  MediaItem,
 } from '../types';
 
 // ============================
@@ -144,6 +143,7 @@ interface PlaylistStore extends PlaylistStoreState {
   addMediaToPlaylist: (playlistId: string, mediaId: string, position?: number) => Promise<void>;
   removeFromPlaylist: (playlistId: string, itemId: string) => Promise<void>;
   reorderPlaylistItems: (playlistId: string, items: PlaylistItem[]) => Promise<void>;
+  reorderPlaylistItemsByOrder: (playlistId: string, itemOrderUpdates: {id: string, order: number}[]) => Promise<void>;
   updatePlaylistItemSettings: (playlistId: string, itemId: string, data: Partial<PlaylistItem>) => Promise<void>;
   
   // ============================
@@ -830,6 +830,189 @@ export const usePlaylistStore = create<PlaylistStore>()(
           }));
           
           console.error('Failed to reorder playlist items:', error);
+        }
+      },
+
+      reorderPlaylistItemsByOrder: async (playlistId, itemOrderUpdates) => {
+        const state = get();
+        set((state) => ({ 
+          operationLoading: { ...state.operationLoading, [`reorder_order_${playlistId}`]: true },
+          error: null
+        }));
+
+        // Store original items for rollback
+        const originalPlaylist = state.currentPlaylist;
+        const originalPlaylistItems = state.playlistItems[playlistId] || [];
+
+        console.log('🎵 reorderPlaylistItemsByOrder called:', { 
+          playlistId, 
+          itemOrderUpdates,
+          currentItems: originalPlaylistItems.length,
+          originalPlaylist: originalPlaylist?.id,
+          requestUrl: `http://localhost:5000/api/playlists/${playlistId}/reorder`,
+          requestBody: {
+            items: itemOrderUpdates
+          }
+        });
+
+        try {
+          const authToken = localStorage.getItem('auth_token');
+          console.log('🎵 Auth token check:', { 
+            hasToken: !!authToken, 
+            tokenLength: authToken?.length,
+            tokenPrefix: authToken?.substring(0, 10) + '...'
+          });
+          
+          // Validate data before sending
+          const validation = {
+            validItems: [],
+            invalidItems: [],
+            hasValidToken: !!authToken && authToken.length > 0
+          };
+          
+          itemOrderUpdates.forEach((item, index) => {
+            const isValidId = item.id && typeof item.id === 'string' && /^[0-9a-fA-F]{24}$/.test(item.id);
+            const isValidOrder = typeof item.order === 'number' && item.order >= 0;
+            
+            if (isValidId && isValidOrder) {
+              validation.validItems.push(item);
+            } else {
+              validation.invalidItems.push({
+                index,
+                item,
+                issues: {
+                  invalidId: !isValidId,
+                  invalidOrder: !isValidOrder,
+                  idLength: item.id ? item.id.length : 0,
+                  idType: typeof item.id,
+                  orderType: typeof item.order
+                }
+              });
+            }
+          });
+          
+          console.log('🎵 Request validation results:', validation);
+          
+          if (validation.invalidItems.length > 0) {
+            console.error('🚫 Found invalid items, aborting request:', validation.invalidItems);
+            throw new Error(`Invalid data: ${validation.invalidItems.length} items have validation issues`);
+          }
+          
+          if (!validation.hasValidToken) {
+            console.error('🚫 No valid authentication token found');
+            throw new Error('Authentication token is missing or invalid');
+          }
+          
+          // Call the /reorder endpoint (not /items/reorder) to match PlaylistAssignment usage
+          const response = await fetch(`http://localhost:5000/api/playlists/${playlistId}/reorder`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({
+              items: itemOrderUpdates
+            })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ 
+              message: 'Failed to parse error response',
+              errors: [],
+              success: false
+            }));
+            console.error('🚫 Failed to reorder playlist items:', {
+              status: response.status,
+              statusText: response.statusText,
+              errorData,
+              requestData: {
+                playlistId,
+                items: itemOrderUpdates,
+                itemsCount: itemOrderUpdates.length,
+                itemsDetailed: itemOrderUpdates.map(item => ({
+                  id: item.id,
+                  idLength: item.id?.length,
+                  idType: typeof item.id,
+                  isValidObjectId: item.id ? /^[0-9a-fA-F]{24}$/.test(item.id) : false,
+                  order: item.order,
+                  orderType: typeof item.order
+                }))
+              },
+              requestUrl: `http://localhost:5000/api/playlists/${playlistId}/reorder`,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('auth_token') ? 'TOKEN_EXISTS' : 'NO_TOKEN'}`
+              }
+            });
+            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const result = await response.json();
+          console.log('🎵 Playlist reorder API response:', result);
+
+          // Update local state optimistically with the new order
+          if (originalPlaylist && originalPlaylist.id === playlistId) {
+            // Create updated playlist items with new order
+            const updatedItems = [...originalPlaylistItems];
+            
+            // Apply the order changes to the items
+            itemOrderUpdates.forEach(update => {
+              const itemIndex = updatedItems.findIndex(item => item.id === update.id);
+              if (itemIndex !== -1) {
+                updatedItems[itemIndex] = { ...updatedItems[itemIndex], order: update.order };
+              }
+            });
+
+            // Sort by the new order
+            updatedItems.sort((a, b) => a.order - b.order);
+
+            // Update both currentPlaylist and playlistItems
+            set((state) => ({
+              currentPlaylist: {
+                ...originalPlaylist,
+                items: updatedItems,
+                updatedAt: new Date().toISOString()
+              },
+              playlistItems: {
+                ...state.playlistItems,
+                [playlistId]: updatedItems
+              },
+              playlists: state.playlists.map(playlist =>
+                playlist.id === playlistId 
+                  ? { ...playlist, updatedAt: new Date().toISOString() }
+                  : playlist
+              ),
+              operationLoading: { ...state.operationLoading, [`reorder_order_${playlistId}`]: false }
+            }));
+          } else {
+            // If no current playlist, just clear loading state
+            set((state) => ({
+              operationLoading: { ...state.operationLoading, [`reorder_order_${playlistId}`]: false }
+            }));
+          }
+
+          // Emit socket event if connected
+          if (socketService.isConnected()) {
+            socketService.emitPlaylistItemReordered(playlistId, originalPlaylistItems);
+          }
+
+          console.log('✅ Playlist reorder completed successfully');
+        } catch (error) {
+          const errorMessage = isPlaylistApiError(error) 
+            ? getPlaylistErrorMessage(error)
+            : error instanceof Error 
+              ? error.message
+              : 'Failed to reorder playlist items';
+            
+          console.error('🚫 Failed to reorder playlist items:', error);
+          
+          set((state) => ({
+            operationLoading: { ...state.operationLoading, [`reorder_order_${playlistId}`]: false },
+            error: errorMessage,
+          }));
+          
+          // Re-throw error so the UI can handle it
+          throw error;
         }
       },
 
@@ -1606,6 +1789,7 @@ export const useForceRefreshPlaylists = () => usePlaylistStore((state) => state.
 export const useAddMediaToPlaylist = () => usePlaylistStore((state) => state.addMediaToPlaylist);
 export const useRemoveFromPlaylist = () => usePlaylistStore((state) => state.removeFromPlaylist);
 export const useReorderPlaylistItems = () => usePlaylistStore((state) => state.reorderPlaylistItems);
+export const useReorderPlaylistItemsByOrder = () => usePlaylistStore((state) => state.reorderPlaylistItemsByOrder);
 
 // Drag and drop actions
 export const usePlaylistDragActions = () => usePlaylistStore((state) => ({
