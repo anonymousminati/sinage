@@ -192,6 +192,7 @@ interface PlaylistStore extends PlaylistStoreState {
   // ============================
   clearError: () => void;
   invalidateCache: () => void;
+  forceRefreshPlaylists: () => Promise<void>;
   fetchStats: () => Promise<void>;
   calculateTotalDuration: (playlistId: string) => number;
   refreshPlaylist: (id: string) => Promise<void>;
@@ -318,6 +319,36 @@ export const usePlaylistStore = create<PlaylistStore>()(
           };
 
           const response = await getPlaylists(mergedParams);
+          console.log('🎵 fetchPlaylists response:', response);
+
+          const playlists = response.data.playlists;
+          console.log('🎵 fetchPlaylists detailed analysis:', {
+            totalPlaylists: playlists.length,
+            playlistsWithItems: playlists.filter(p => p.items && p.items.length > 0).length,
+            totalItemsAcrossAllPlaylists: playlists.reduce((sum, p) => sum + (p.items?.length || 0), 0)
+          });
+
+          // Log detailed media information for each playlist
+          playlists.forEach((playlist, index) => {
+            console.log(`🎵 Playlist ${index + 1}: "${playlist.name}"`, {
+              id: playlist.id,
+              totalItems: playlist.items?.length || 0,
+              itemsData: playlist.items?.map(item => {
+                const media = typeof item.mediaId === 'object' ? item.mediaId : item.media;
+                return {
+                  id: item.id,
+                  order: item.order,
+                  duration: item.duration,
+                  mediaId: typeof item.mediaId === 'string' ? item.mediaId : media?.id || 'missing',
+                  mediaType: media?.type || 'unknown',
+                  mediaName: media?.originalName || 'unnamed',
+                  mediaUrl: media?.secureUrl || media?.url || 'missing',
+                  hasMediaData: !!media,
+                  mediaObject: media
+                };
+              }) || []
+            });
+          });
 
           set({
             playlists: response.data.playlists,
@@ -325,6 +356,7 @@ export const usePlaylistStore = create<PlaylistStore>()(
             filters: response.data.filters,
             loading: false,
             lastFetch: Date.now(),
+            error: null // Clear any previous errors
           });
         } catch (error) {
           const errorMessage = isPlaylistApiError(error) 
@@ -351,11 +383,61 @@ export const usePlaylistStore = create<PlaylistStore>()(
         }
 
         set((state) => ({ 
-          operationLoading: { ...state.operationLoading, [`fetch_${id}`]: true }
+          operationLoading: { ...state.operationLoading, [`fetch_${id}`]: true },
+          error: null
         }));
+
+        console.log('🎵 fetchPlaylist called:', { id, includeItems });
 
         try {
           const playlist = await getPlaylist(id, includeItems);
+          console.log('🎵 fetchPlaylist response:', playlist);
+          
+          // Log detailed media information for this playlist
+          console.log(`🎵 Single Playlist: "${playlist.name}" detailed analysis:`, {
+            id: playlist.id,
+            totalItems: playlist.items?.length || 0,
+            itemsWithMedia: playlist.items?.filter(item => item.mediaId || item.media).length || 0,
+            itemsData: playlist.items?.map(item => {
+              const media = typeof item.mediaId === 'object' ? item.mediaId : item.media;
+              return {
+                id: item.id,
+                order: item.order,
+                duration: item.duration,
+                mediaId: typeof item.mediaId === 'string' ? item.mediaId : media?.id,
+                mediaType: media?.type,
+                mediaName: media?.originalName,
+                mediaUrl: media?.secureUrl || media?.url,
+                hasMediaData: !!media,
+                fullMediaObject: media,
+                // CRITICAL DEBUG: Check exact field names
+                mediaIdTypeCheck: typeof item.mediaId,
+                mediaIdKeys: typeof item.mediaId === 'object' ? Object.keys(item.mediaId) : [],
+                hasSecureUrl: !!(typeof item.mediaId === 'object' && item.mediaId?.secureUrl),
+                hasUrl: !!(typeof item.mediaId === 'object' && item.mediaId?.url),
+                hasOriginalName: !!(typeof item.mediaId === 'object' && item.mediaId?.originalName)
+              };
+            }) || []
+          });
+          
+          // IMMEDIATE TEST: Try to access first item's media data
+          if (playlist.items && playlist.items.length > 0) {
+            const firstItem = playlist.items[0];
+            console.log('🔍 CRITICAL DEBUG - First Item Deep Analysis:', {
+              rawItem: firstItem,
+              mediaIdType: typeof firstItem.mediaId,
+              mediaIdValue: firstItem.mediaId,
+              isObjectCheck: typeof firstItem.mediaId === 'object',
+              extractedMedia: typeof firstItem.mediaId === 'object' ? firstItem.mediaId : firstItem.media,
+              // Test all possible field access patterns
+              directAccess: {
+                secureUrl: firstItem.mediaId?.secureUrl,
+                url: firstItem.mediaId?.url,
+                originalName: firstItem.mediaId?.originalName,
+                type: firstItem.mediaId?.type
+              }
+            });
+          }
           
           set((state) => ({
             currentPlaylist: playlist,
@@ -370,12 +452,12 @@ export const usePlaylistStore = create<PlaylistStore>()(
             ? getPlaylistErrorMessage(error)
             : 'Failed to fetch playlist';
             
+          console.error('🚫 Failed to fetch playlist:', error);
+            
           set((state) => ({
             operationLoading: { ...state.operationLoading, [`fetch_${id}`]: false },
             error: errorMessage,
           }));
-          
-          console.error('Failed to fetch playlist:', error);
         }
       },
 
@@ -417,42 +499,66 @@ export const usePlaylistStore = create<PlaylistStore>()(
 
       updatePlaylist: async (id, data) => {
         set((state) => ({ 
-          operationLoading: { ...state.operationLoading, [`update_${id}`]: true }
+          operationLoading: { ...state.operationLoading, [`update_${id}`]: true },
+          error: null // Clear any previous errors
         }));
+
+        console.log('🎵 updatePlaylist called with:', { id, data });
+        console.log('🎵 Current store state before update:', get().currentPlaylist);
 
         try {
           const updatedPlaylist = await updatePlaylistAPI(id, data);
+          console.log('🎵 API response:', updatedPlaylist);
+          console.log('🎵 API response type:', typeof updatedPlaylist, Object.keys(updatedPlaylist || {}));
 
           // Update playlist optimistically
-          set((state) => ({
-            playlists: state.playlists.map((playlist) =>
+          set((state) => {
+            const updatedPlaylists = state.playlists.map((playlist) =>
               playlist.id === id ? { ...playlist, ...updatedPlaylist } : playlist
-            ),
-            currentPlaylist: state.currentPlaylist?.id === id 
+            );
+            
+            const updatedCurrentPlaylist = state.currentPlaylist?.id === id 
               ? { ...state.currentPlaylist, ...updatedPlaylist }
-              : state.currentPlaylist,
-            playlistCache: {
-              ...state.playlistCache,
-              [id]: { data: updatedPlaylist, timestamp: Date.now() }
-            },
-            operationLoading: { ...state.operationLoading, [`update_${id}`]: false }
-          }));
+              : state.currentPlaylist;
 
-          // Emit socket event
+            console.log('Updated playlist in store:', updatedCurrentPlaylist);
+
+            return {
+              playlists: updatedPlaylists,
+              currentPlaylist: updatedCurrentPlaylist,
+              playlistCache: {
+                ...state.playlistCache,
+                [id]: { data: updatedPlaylist, timestamp: Date.now() }
+              },
+              operationLoading: { ...state.operationLoading, [`update_${id}`]: false }
+            };
+          });
+
+          // Emit socket event if connected
           if (socketService.isConnected()) {
             socketService.emitPlaylistUpdate(id, updatedPlaylist);
           }
+          
+          console.log('Playlist update completed successfully');
         } catch (error) {
           const errorMessage = isPlaylistApiError(error) 
             ? getPlaylistErrorMessage(error)
             : 'Failed to update playlist';
             
+          console.error('Failed to update playlist:', error);
+          console.error('Error details:', {
+            message: error.message,
+            status: error.status,
+            data: error.data
+          });
+          
           set((state) => ({
             operationLoading: { ...state.operationLoading, [`update_${id}`]: false },
             error: errorMessage,
           }));
           
-          console.error('Failed to update playlist:', error);
+          // Re-throw error so the UI can handle it
+          throw error;
         }
       },
 
@@ -559,11 +665,15 @@ export const usePlaylistStore = create<PlaylistStore>()(
 
       addMediaToPlaylist: async (playlistId, mediaId, position) => {
         set((state) => ({ 
-          operationLoading: { ...state.operationLoading, [`add_${playlistId}_${mediaId}`]: true }
+          operationLoading: { ...state.operationLoading, [`add_${playlistId}_${mediaId}`]: true },
+          error: null
         }));
+
+        console.log('Adding media to playlist:', { playlistId, mediaId, position });
 
         try {
           const playlistItem = await addMediaToPlaylistAPI(playlistId, mediaId, position);
+          console.log('Media added successfully:', playlistItem);
 
           // Update playlist items optimistically
           set((state) => {
@@ -600,12 +710,15 @@ export const usePlaylistStore = create<PlaylistStore>()(
             ? getPlaylistErrorMessage(error)
             : 'Failed to add media to playlist';
             
+          console.error('Failed to add media to playlist:', error);
+          
           set((state) => ({
             operationLoading: { ...state.operationLoading, [`add_${playlistId}_${mediaId}`]: false },
             error: errorMessage,
           }));
           
-          console.error('Failed to add media to playlist:', error);
+          // Re-throw so UI can handle it
+          throw error;
         }
       },
 
@@ -1109,6 +1222,13 @@ export const usePlaylistStore = create<PlaylistStore>()(
         set({ lastFetch: 0, playlistCache: {} });
       },
 
+      forceRefreshPlaylists: async () => {
+        console.log('🎵 Force refreshing playlists...');
+        set({ lastFetch: 0, playlistCache: {}, playlists: [], currentPlaylist: null });
+        await get().fetchPlaylists();
+        console.log('🎵 Force refresh completed');
+      },
+
       fetchStats: async () => {
         try {
           const response = await getPlaylistStats();
@@ -1480,6 +1600,7 @@ export const useUpdatePlaylist = () => usePlaylistStore((state) => state.updateP
 export const useDeletePlaylist = () => usePlaylistStore((state) => state.deletePlaylist);
 export const useSetCurrentPlaylist = () => usePlaylistStore((state) => state.setCurrentPlaylist);
 export const useClearPlaylistError = () => usePlaylistStore((state) => state.clearError);
+export const useForceRefreshPlaylists = () => usePlaylistStore((state) => state.forceRefreshPlaylists);
 
 // Playlist item actions
 export const useAddMediaToPlaylist = () => usePlaylistStore((state) => state.addMediaToPlaylist);

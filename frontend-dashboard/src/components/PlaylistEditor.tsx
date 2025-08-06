@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
+import { Textarea } from "./ui/textarea";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Separator } from "./ui/separator";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "./ui/resizable";
@@ -179,6 +182,12 @@ export function PlaylistEditor() {
   const [selectedItem, setSelectedItem] = useState<PlaylistItem | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   
+  // Form state for playlist editing
+  const [playlistName, setPlaylistName] = useState("");
+  const [playlistDescription, setPlaylistDescription] = useState("");
+  const [playlistIsActive, setPlaylistIsActive] = useState(true);
+  const [formChanged, setFormChanged] = useState(false);
+  
   // Socket connection status
   const socketStatus = useSocketStatus();
 
@@ -204,7 +213,8 @@ export function PlaylistEditor() {
     activeUsers,
     conflictResolution,
     handleConflictResolution,
-    clearConflict
+    clearConflict,
+    forceRefreshPlaylists
   } = usePlaylistStore();
 
   const {
@@ -247,6 +257,21 @@ export function PlaylistEditor() {
       setCurrentPlaylist(playlists[0]);
     }
   }, [playlists, currentPlaylist, setCurrentPlaylist]);
+
+  // Update form state when current playlist changes
+  useEffect(() => {
+    if (currentPlaylist) {
+      setPlaylistName(currentPlaylist.name || "");
+      setPlaylistDescription(currentPlaylist.description || "");
+      setPlaylistIsActive(currentPlaylist.isActive ?? true);
+      setFormChanged(false);
+    } else {
+      setPlaylistName("");
+      setPlaylistDescription("");
+      setPlaylistIsActive(true);
+      setFormChanged(false);
+    }
+  }, [currentPlaylist]);
 
   // Initialize socket connections for real-time updates
   useEffect(() => {
@@ -412,20 +437,102 @@ export function PlaylistEditor() {
   }, [createPlaylist, playlists.length, setCurrentPlaylist]);
 
   const handleSavePlaylist = useCallback(async () => {
-    if (!currentPlaylist) return;
+    console.log('🎵 handleSavePlaylist called');
+    console.log('🎵 Current state:', { 
+      currentPlaylist: currentPlaylist?.id, 
+      formChanged, 
+      playlistName, 
+      playlistDescription, 
+      playlistIsActive 
+    });
+
+    if (!currentPlaylist || !formChanged) {
+      if (!formChanged) {
+        toast.info("No changes to save");
+        console.log('🎵 No changes to save');
+        return;
+      }
+      console.log('🎵 No playlist selected');
+      return;
+    }
+    
+    // Validate form data
+    if (!playlistName.trim()) {
+      toast.error("Playlist name is required");
+      console.log('🎵 Playlist name is required');
+      return;
+    }
+    
+    if (playlistName.trim().length < 2) {
+      toast.error("Playlist name must be at least 2 characters");
+      console.log('🎵 Playlist name too short');
+      return;
+    }
     
     try {
-      await updatePlaylist(currentPlaylist.id, {
-        name: currentPlaylist.name,
-        description: currentPlaylist.description,
-        isActive: currentPlaylist.isActive
+      const updateData = {
+        name: playlistName.trim(),
+        description: playlistDescription.trim(),
+        isActive: playlistIsActive
+      };
+      
+      console.log('🎵 Saving playlist with data:', updateData);
+      console.log('🎵 Playlist ID:', currentPlaylist.id);
+      
+      await updatePlaylist(currentPlaylist.id, updateData);
+      
+      console.log('🎵 Playlist update completed successfully');
+      setFormChanged(false);
+      toast.success("Playlist saved successfully");
+    } catch (error: any) {
+      console.error('🎵 Failed to save playlist:', error);
+      
+      // Extract meaningful error message
+      let errorMessage = "Failed to save playlist";
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.data?.message) {
+        errorMessage = error.data.message;
+      } else if (error?.data?.error) {
+        errorMessage = error.data.error;
+      }
+      
+      // Check for specific error types
+      if (error?.status === 409) {
+        errorMessage = "A playlist with this name already exists";
+      } else if (error?.status === 400) {
+        errorMessage = "Invalid playlist data. Please check your inputs.";
+      } else if (error?.status === 404) {
+        errorMessage = "Playlist not found or access denied";
+      } else if (error?.status === 401) {
+        errorMessage = "You are not authorized to update this playlist";
+      }
+      
+      toast.error(errorMessage, {
+        duration: 5000,
+        action: {
+          label: 'Retry',
+          onClick: () => handleSavePlaylist(),
+        },
       });
-      toast.success("Playlist saved");
-    } catch (error) {
-      console.error('Failed to save playlist:', error);
-      toast.error("Failed to save playlist");
     }
-  }, [currentPlaylist, updatePlaylist]);
+  }, [currentPlaylist, playlistName, playlistDescription, playlistIsActive, formChanged, updatePlaylist]);
+  
+  // Handle form field changes
+  const handleNameChange = useCallback((newName: string) => {
+    setPlaylistName(newName);
+    setFormChanged(true);
+  }, []);
+  
+  const handleDescriptionChange = useCallback((newDescription: string) => {
+    setPlaylistDescription(newDescription);
+    setFormChanged(true);
+  }, []);
+  
+  const handleActiveChange = useCallback((newActive: boolean) => {
+    setPlaylistIsActive(newActive);
+    setFormChanged(true);
+  }, []);
 
   const handleAssignToScreens = useCallback(async (screenIds: string[]) => {
     if (!currentPlaylist) return;
@@ -503,7 +610,19 @@ export function PlaylistEditor() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selectedItem, handleSavePlaylist, handleRemoveFromPlaylist, handleDuplicatePlaylist]);
 
-  // Clear errors on mount
+  // Clear errors on mount and show errors
+  useEffect(() => {
+    if (error) {
+      toast.error(error, { duration: 5000 });
+    }
+  }, [error]);
+  
+  useEffect(() => {
+    if (mediaError) {
+      toast.error(`Media library error: ${mediaError}`, { duration: 5000 });
+    }
+  }, [mediaError]);
+  
   useEffect(() => {
     return () => {
       clearError();
@@ -601,9 +720,21 @@ export function PlaylistEditor() {
               <Monitor className="h-4 w-4 mr-2" />
               Assign to Screens
             </Button>
-            <Button onClick={handleSavePlaylist} disabled={!currentPlaylist}>
+            <Button 
+              onClick={handleSavePlaylist} 
+              disabled={!currentPlaylist || !formChanged}
+              variant={formChanged ? "default" : "outline"}
+            >
               {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-              Save
+              {formChanged ? "Save Changes" : "Saved"}
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={forceRefreshPlaylists}
+              title="Force refresh playlist data from server"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
             </Button>
           </div>
         </div>
@@ -669,6 +800,72 @@ export function PlaylistEditor() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Playlist Settings Form */}
+        {currentPlaylist && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Playlist Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="playlist-name">Playlist Name *</Label>
+                  <Input
+                    id="playlist-name"
+                    value={playlistName}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    placeholder="Enter playlist name..."
+                    className={formChanged ? "border-orange-300" : ""}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="playlist-active">Status</Label>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="playlist-active"
+                      checked={playlistIsActive}
+                      onCheckedChange={handleActiveChange}
+                    />
+                    <Label htmlFor="playlist-active" className="text-sm">
+                      {playlistIsActive ? 'Active' : 'Inactive'}
+                    </Label>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="playlist-description">Description</Label>
+                <Textarea
+                  id="playlist-description"
+                  value={playlistDescription}
+                  onChange={(e) => handleDescriptionChange(e.target.value)}
+                  placeholder="Enter playlist description..."
+                  rows={3}
+                  className={formChanged ? "border-orange-300" : ""}
+                />
+              </div>
+              
+              {formChanged && (
+                <div className="flex items-center gap-2 p-2 bg-orange-50 rounded border border-orange-200">
+                  <AlertCircle className="h-4 w-4 text-orange-600" />
+                  <span className="text-sm text-orange-700">You have unsaved changes</span>
+                  <Button 
+                    size="sm" 
+                    onClick={handleSavePlaylist}
+                    className="ml-auto"
+                  >
+                    Save Now
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Main Editor */}
         <ResizablePanelGroup direction="horizontal" className="min-h-[600px] rounded-lg border">

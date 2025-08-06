@@ -239,6 +239,11 @@ const getPlaylists = async (req, res) => {
         .skip(skip)
         .limit(limit)
         .populate('owner', 'name email')
+        .populate({
+          path: 'items.mediaId',
+          model: 'Media',
+          select: 'originalName url secureUrl type duration videoDuration fileSize format'
+        })
         .populate('assignedScreens', 'name location status')
         .populate('collaborators.user', 'name email'),
       Playlist.countDocuments(query),
@@ -252,6 +257,32 @@ const getPlaylists = async (req, res) => {
       totalCount,
       filters: { search, tags, assignedToScreen, isPublic }
     });
+
+    // Debug logging for media population
+    if (playlists.length > 0) {
+      playlists.forEach((playlist, index) => {
+        winston.debug(`Playlist ${index + 1} "${playlist.name}":`, {
+          service: 'playlist-debug',
+          playlistId: playlist._id,
+          itemCount: playlist.items?.length || 0,
+          firstItemMediaType: playlist.items?.[0]?.mediaId ? typeof playlist.items[0].mediaId : 'no-items'
+        });
+
+        if (playlist.items && playlist.items.length > 0) {
+          playlist.items.forEach((item, itemIndex) => {
+            winston.debug(`Item ${itemIndex}:`, {
+              service: 'playlist-debug',
+              playlistId: playlist._id,
+              itemId: item._id,
+              mediaIdType: typeof item.mediaId,
+              mediaIdValue: item.mediaId,
+              hasMediaData: item.mediaId && typeof item.mediaId === 'object' ? 'YES' : 'NO',
+              mediaName: item.mediaId?.originalName || 'N/A'
+            });
+          });
+        }
+      });
+    }
 
     res.json({
       success: true,
@@ -320,7 +351,11 @@ const getPlaylistById = async (req, res) => {
       isActive: true
     })
     .populate('owner', 'name email')
-    .populate('items.mediaId', 'originalName url secureUrl type duration videoDuration fileSize format')
+    .populate({
+      path: 'items.mediaId',
+      model: 'Media',
+      select: 'originalName url secureUrl type duration videoDuration fileSize format'
+    })
     .populate('assignedScreens', 'name location status lastSeen')
     .populate('collaborators.user', 'name email');
 
@@ -365,10 +400,25 @@ const getPlaylistById = async (req, res) => {
  * @access Private
  */
 const updatePlaylist = async (req, res) => {
+  const startTime = Date.now();
+  
   try {
     const { id } = req.params;
 
+    winston.info('Starting playlist update:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      requestBody: req.body,
+      timestamp: new Date().toISOString()
+    });
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
+      winston.warn('Invalid playlist ID provided:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id
+      });
       return res.status(400).json({
         success: false,
         message: 'Invalid playlist ID'
@@ -376,8 +426,25 @@ const updatePlaylist = async (req, res) => {
     }
 
     // Validate request body
+    winston.debug('Validating request body:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      bodyKeys: Object.keys(req.body)
+    });
+
     const { error, value } = updatePlaylistSchema.validate(req.body);
     if (error) {
+      winston.warn('Validation failed:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id,
+        validationErrors: error.details.map(detail => ({
+          field: detail.path.join('.'),
+          message: detail.message,
+          value: detail.context?.value
+        }))
+      });
       return res.status(400).json({
         success: false,
         message: 'Validation error',
@@ -385,7 +452,20 @@ const updatePlaylist = async (req, res) => {
       });
     }
 
+    winston.debug('Validation passed, validated data:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      validatedData: value
+    });
+
     // Find playlist and verify ownership or edit permission
+    winston.debug('Finding playlist:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id
+    });
+
     const playlist = await Playlist.findOne({
       _id: id,
       $or: [
@@ -396,14 +476,42 @@ const updatePlaylist = async (req, res) => {
     });
 
     if (!playlist) {
+      winston.warn('Playlist not found or access denied:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id
+      });
       return res.status(404).json({
         success: false,
         message: 'Playlist not found or insufficient permissions'
       });
     }
 
+    winston.debug('Playlist found:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      currentPlaylist: {
+        name: playlist.name,
+        description: playlist.description,
+        owner: playlist.owner,
+        version: playlist.version,
+        lastModified: playlist.lastModified,
+        isActive: playlist.isActive,
+        isPublic: playlist.isPublic
+      }
+    });
+
     // Check for duplicate name if name is being changed
     if (value.name && value.name !== playlist.name) {
+      winston.debug('Checking for duplicate playlist name:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id,
+        oldName: playlist.name,
+        newName: value.name
+      });
+
       const existingPlaylist = await Playlist.findOne({
         owner: playlist.owner,
         name: value.name,
@@ -412,6 +520,13 @@ const updatePlaylist = async (req, res) => {
       });
 
       if (existingPlaylist) {
+        winston.warn('Duplicate playlist name found:', {
+          service: 'playlist',
+          playlistId: id,
+          userId: req.user.id,
+          duplicateName: value.name,
+          existingPlaylistId: existingPlaylist._id
+        });
         return res.status(409).json({
           success: false,
           message: 'Playlist with this name already exists'
@@ -419,41 +534,207 @@ const updatePlaylist = async (req, res) => {
       }
     }
 
-    // Update playlist
-    Object.assign(playlist, value);
+    // Store original values for debugging
+    const originalValues = {
+      name: playlist.name,
+      description: playlist.description,
+      isActive: playlist.isActive,
+      isPublic: playlist.isPublic,
+      tags: playlist.tags,
+      settings: playlist.settings,
+      schedule: playlist.schedule,
+      version: playlist.version,
+      lastModified: playlist.lastModified
+    };
+
+    winston.debug('Original playlist values before update:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      originalValues
+    });
+
+    // Update playlist fields
+    winston.debug('Applying updates to playlist:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      updates: value
+    });
+
+    // Apply updates one by one with logging
+    const updatedFields = [];
+    for (const [key, val] of Object.entries(value)) {
+      if (val !== undefined && val !== null) {
+        const oldValue = playlist[key];
+        playlist[key] = val;
+        updatedFields.push({ field: key, oldValue, newValue: val });
+        winston.debug(`Updated field '${key}':`, {
+          service: 'playlist',
+          playlistId: id,
+          userId: req.user.id,
+          field: key,
+          oldValue,
+          newValue: val
+        });
+      }
+    }
+
+    // Update lastModified timestamp
     playlist.lastModified = new Date();
+    winston.debug('Set lastModified timestamp:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      lastModified: playlist.lastModified
+    });
+
+    // Check if playlist was actually modified
+    const isModified = playlist.isModified();
+    const modifiedPaths = playlist.modifiedPaths();
     
-    await playlist.save();
+    winston.debug('Playlist modification status before save:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      isModified,
+      modifiedPaths,
+      updatedFields
+    });
+
+    // Save the playlist with comprehensive error handling
+    winston.debug('Attempting to save playlist to database:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id
+    });
+
+    try {
+      const savedPlaylist = await playlist.save();
+      
+      winston.info('Playlist saved successfully to database:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id,
+        newVersion: savedPlaylist.version,
+        lastModified: savedPlaylist.lastModified,
+        updatedFields: updatedFields.map(f => f.field),
+        saveTime: Date.now() - startTime
+      });
+
+    } catch (saveError) {
+      winston.error('Database save failed:', {
+        service: 'playlist',
+        playlistId: id,
+        userId: req.user.id,
+        error: saveError.message,
+        stack: saveError.stack,
+        validationErrors: saveError.errors ? Object.keys(saveError.errors).map(key => ({
+          field: key,
+          message: saveError.errors[key].message,
+          value: saveError.errors[key].value
+        })) : null
+      });
+      throw saveError;
+    }
+
+    winston.debug('Verifying save by re-fetching playlist:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id
+    });
+
+    // Verify the save by fetching the updated playlist
+    const verifyPlaylist = await Playlist.findById(id);
+    winston.debug('Verification fetch result:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      verifiedData: {
+        name: verifyPlaylist?.name,
+        description: verifyPlaylist?.description,
+        version: verifyPlaylist?.version,
+        lastModified: verifyPlaylist?.lastModified,
+        isActive: verifyPlaylist?.isActive,
+        isPublic: verifyPlaylist?.isPublic
+      }
+    });
 
     winston.info('Playlist updated successfully:', {
       service: 'playlist',
       playlistId: id,
       userId: req.user.id,
-      updates: Object.keys(value)
+      updates: Object.keys(value),
+      totalTime: Date.now() - startTime
     });
 
     // Populate and return updated playlist
+    winston.debug('Populating playlist for response:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id
+    });
+
     await playlist.populate('owner', 'name email');
     await playlist.populate('assignedScreens', 'name location status');
 
-    res.json({
+    const responseData = {
       success: true,
       message: 'Playlist updated successfully',
-      data: playlist
+      data: playlist,
+      debug: process.env.NODE_ENV === 'development' ? {
+        originalValues,
+        updatedFields,
+        processingTime: Date.now() - startTime,
+        modifiedPaths
+      } : undefined
+    };
+
+    winston.debug('Sending success response:', {
+      service: 'playlist',
+      playlistId: id,
+      userId: req.user.id,
+      responseSize: JSON.stringify(responseData).length
     });
 
+    res.json(responseData);
+
   } catch (error) {
-    winston.error('Playlist update failed:', {
+    const errorDetails = {
       service: 'playlist',
       playlistId: req.params.id,
       userId: req.user?.id,
-      error: error.message
-    });
+      error: error.message,
+      errorType: error.constructor.name,
+      stack: error.stack,
+      processingTime: Date.now() - startTime
+    };
+
+    // Add specific error details for common error types
+    if (error.name === 'ValidationError') {
+      errorDetails.validationErrors = Object.keys(error.errors).map(key => ({
+        field: key,
+        message: error.errors[key].message,
+        value: error.errors[key].value,
+        kind: error.errors[key].kind
+      }));
+    } else if (error.name === 'MongoError' || error.name === 'MongoServerError') {
+      errorDetails.mongoError = {
+        code: error.code,
+        codeName: error.codeName
+      };
+    }
+
+    winston.error('Playlist update failed:', errorDetails);
 
     res.status(500).json({
       success: false,
       message: 'Failed to update playlist',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      error: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        type: error.constructor.name,
+        details: errorDetails
+      } : 'Internal server error'
     });
   }
 };

@@ -355,13 +355,14 @@ export async function addMediaToPlaylist(
       method: 'POST',
       body: JSON.stringify({
         mediaId,
-        position,
+        order: position, // Backend expects 'order' not 'position'
         duration,
       }),
     });
     
-    const result = await processResponse<PlaylistItemResponse>(response);
-    return result.data;
+    const result = await processResponse<any>(response);
+    // Backend returns { data: { item: PlaylistItem } } structure
+    return result.data.item || result.data;
   } catch (error) {
     console.error('Failed to add media to playlist:', error);
     throw error;
@@ -398,16 +399,15 @@ export async function reorderPlaylistItems(
   playlistId: string,
   items: PlaylistItem[]
 ): Promise<Playlist> {
-  const url = `${API_BASE_URL}/playlists/${playlistId}/reorder`;
+  // Note: Backend expects /items/reorder not /reorder
+  const url = `${API_BASE_URL}/playlists/${playlistId}/items/reorder`;
   
   try {
     const response = await fetchWithRetry(url, {
       method: 'PUT',
       body: JSON.stringify({
-        items: items.map((item, index) => ({
-          id: item.id,
-          order: index,
-        })),
+        // Backend expects itemOrder not items
+        itemOrder: items.map(item => item.id),
       }),
     });
     
@@ -468,7 +468,10 @@ export async function assignPlaylistToScreens(
   try {
     const response = await fetchWithRetry(url, {
       method: 'POST',
-      body: JSON.stringify({ screenIds }),
+      body: JSON.stringify({ 
+        screenIds,
+        action: 'assign' // Backend expects action field
+      }),
     });
     
     await processResponse(response);
@@ -489,12 +492,16 @@ export async function unassignPlaylistFromScreens(
   playlistId: string,
   screenIds?: string[]
 ): Promise<void> {
-  const url = `${API_BASE_URL}/playlists/${playlistId}/unassign`;
+  // Backend uses same assign endpoint with different action
+  const url = `${API_BASE_URL}/playlists/${playlistId}/assign`;
   
   try {
     const response = await fetchWithRetry(url, {
       method: 'POST',
-      body: JSON.stringify({ screenIds }),
+      body: JSON.stringify({ 
+        screenIds: screenIds || [], 
+        action: 'unassign' // Backend expects action field
+      }),
     });
     
     await processResponse(response);

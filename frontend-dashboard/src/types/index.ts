@@ -36,6 +36,7 @@ export interface MediaItem {
   height?: number;
   fileSize: number;
   duration?: number;
+  videoDuration?: number; // Video-specific duration property
   tags: string[];
   description?: string;
   owner: string;
@@ -381,7 +382,7 @@ export interface PlaylistTransition {
 
 export interface PlaylistItem {
   id: string;
-  mediaId: string;
+  mediaId: string | MediaItem; // Can be string ID or populated MediaItem object
   playlistId: string;
   order: number;
   duration?: number; // Custom duration override

@@ -395,90 +395,291 @@ playlistSchema.virtual('isCurrentlyActive').get(function() {
 
 // Pre-save hooks for data validation and calculations
 playlistSchema.pre('save', async function(next) {
+  const winston = require('winston');
+  const startTime = Date.now();
+  
   try {
+    winston.debug('Pre-save hook started:', {
+      service: 'playlist-model',
+      playlistId: this._id,
+      playlistName: this.name,
+      isNew: this.isNew,
+      isModified: this.isModified(),
+      modifiedPaths: this.modifiedPaths()
+    });
+
     // Update version on modification
     if (this.isModified() && !this.isNew) {
+      const oldVersion = this.version;
       this.version += 1;
       this.lastModified = new Date();
+      
+      winston.debug('Updated version and lastModified:', {
+        service: 'playlist-model',
+        playlistId: this._id,
+        oldVersion,
+        newVersion: this.version,
+        lastModified: this.lastModified
+      });
     }
 
     // Calculate total duration and item count
     if (this.isModified('items')) {
-      await this.calculateTotals();
+      winston.debug('Items modified, calculating totals:', {
+        service: 'playlist-model',
+        playlistId: this._id,
+        itemCount: this.items?.length || 0
+      });
+      
+      try {
+        await this.calculateTotals();
+        winston.debug('Totals calculated successfully:', {
+          service: 'playlist-model',
+          playlistId: this._id,
+          totalDuration: this.totalDuration,
+          totalItems: this.totalItems
+        });
+      } catch (calcError) {
+        winston.error('Failed to calculate totals:', {
+          service: 'playlist-model',
+          playlistId: this._id,
+          error: calcError.message
+        });
+        throw calcError;
+      }
     }
 
     // Ensure unique order values within the playlist
     if (this.isModified('items')) {
+      winston.debug('Processing item orders:', {
+        service: 'playlist-model',
+        playlistId: this._id,
+        itemCount: this.items?.length || 0
+      });
+      
       this.items.forEach((item, index) => {
         if (item.order === undefined || item.order === null) {
           item.order = index;
+          winston.debug(`Set item order: ${index}`, {
+            service: 'playlist-model',
+            playlistId: this._id,
+            itemId: item._id,
+            order: index
+          });
         }
       });
       
       // Sort items by order
       this.items.sort((a, b) => a.order - b.order);
+      winston.debug('Items sorted by order', {
+        service: 'playlist-model',
+        playlistId: this._id,
+        itemOrders: this.items.map(item => item.order)
+      });
     }
 
     // Validate collaborator permissions
     if (this.isModified('collaborators')) {
+      winston.debug('Validating collaborators:', {
+        service: 'playlist-model',
+        playlistId: this._id,
+        collaboratorCount: this.collaborators?.length || 0
+      });
+      
       const userIds = this.collaborators.map(c => c.user.toString());
       const uniqueUserIds = [...new Set(userIds)];
       if (userIds.length !== uniqueUserIds.length) {
+        winston.error('Duplicate collaborators found:', {
+          service: 'playlist-model',
+          playlistId: this._id,
+          userIds,
+          uniqueUserIds
+        });
         throw new Error('Duplicate collaborators are not allowed');
       }
     }
 
     // Ensure owner is not in collaborators
-    if (this.collaborators) {
+    if (this.collaborators && this.owner) {
+      const originalCollaboratorCount = this.collaborators.length;
       this.collaborators = this.collaborators.filter(
         c => c.user.toString() !== this.owner.toString()
       );
+      
+      if (this.collaborators.length !== originalCollaboratorCount) {
+        winston.debug('Removed owner from collaborators:', {
+          service: 'playlist-model',
+          playlistId: this._id,
+          owner: this.owner,
+          originalCount: originalCollaboratorCount,
+          newCount: this.collaborators.length
+        });
+      }
     }
+
+    winston.debug('Pre-save hook completed successfully:', {
+      service: 'playlist-model',
+      playlistId: this._id,
+      processingTime: Date.now() - startTime
+    });
 
     next();
   } catch (error) {
+    winston.error('Pre-save hook failed:', {
+      service: 'playlist-model',
+      playlistId: this._id,
+      playlistName: this.name,
+      error: error.message,
+      stack: error.stack,
+      processingTime: Date.now() - startTime
+    });
     next(error);
   }
 });
 
 // Instance methods
 playlistSchema.methods.calculateTotals = async function() {
-  if (!this.items || this.items.length === 0) {
-    this.totalDuration = 0;
-    this.totalItems = 0;
-    return;
-  }
+  const winston = require('winston');
+  
+  try {
+    winston.debug('Starting calculateTotals:', {
+      service: 'playlist-model',
+      playlistId: this._id,
+      itemCount: this.items?.length || 0
+    });
 
-  // Populate media for duration calculation
-  await this.populate('items.mediaId', 'duration videoDuration type');
-  
-  let totalDuration = 0;
-  
-  for (const item of this.items) {
-    if (!item.mediaId) continue;
+    if (!this.items || this.items.length === 0) {
+      this.totalDuration = 0;
+      this.totalItems = 0;
+      winston.debug('No items found, set totals to 0:', {
+        service: 'playlist-model',
+        playlistId: this._id
+      });
+      return;
+    }
+
+    // Populate media for duration calculation
+    winston.debug('Populating media data for duration calculation:', {
+      service: 'playlist-model',
+      playlistId: this._id,
+      itemCount: this.items.length
+    });
     
-    // Use custom duration if specified, otherwise use media default
-    let itemDuration = item.duration;
-    if (!itemDuration) {
-      const media = item.mediaId;
-      itemDuration = media.type === 'image' ? media.duration : media.videoDuration;
+    try {
+      await this.populate('items.mediaId', 'duration videoDuration type');
+      winston.debug('Media population completed', {
+        service: 'playlist-model',
+        playlistId: this._id
+      });
+    } catch (populateError) {
+      winston.error('Failed to populate media data:', {
+        service: 'playlist-model',
+        playlistId: this._id,
+        error: populateError.message
+      });
+      // Continue without media data if population fails
     }
     
-    totalDuration += itemDuration || 0;
+    let totalDuration = 0;
+    const itemDurations = [];
     
-    // Add transition duration
-    if (item.transitions && item.transitions.duration) {
-      totalDuration += item.transitions.duration;
+    for (const [index, item] of this.items.entries()) {
+      winston.debug(`Processing item ${index}:`, {
+        service: 'playlist-model',
+        playlistId: this._id,
+        itemId: item._id,
+        mediaId: item.mediaId,
+        customDuration: item.duration
+      });
+      
+      if (!item.mediaId) {
+        winston.warn(`Item ${index} has no mediaId:`, {
+          service: 'playlist-model',
+          playlistId: this._id,
+          itemId: item._id
+        });
+        continue;
+      }
+      
+      // Use custom duration if specified, otherwise use media default
+      let itemDuration = item.duration;
+      if (!itemDuration && item.mediaId) {
+        const media = item.mediaId;
+        if (media && typeof media === 'object') {
+          itemDuration = media.type === 'image' ? media.duration : media.videoDuration;
+          winston.debug(`Using media default duration:`, {
+            service: 'playlist-model',
+            playlistId: this._id,
+            itemId: item._id,
+            mediaType: media.type,
+            duration: itemDuration
+          });
+        } else {
+          winston.warn(`Media data not populated properly:`, {
+            service: 'playlist-model',
+            playlistId: this._id,
+            itemId: item._id,
+            mediaId: item.mediaId,
+            mediaType: typeof item.mediaId
+          });
+        }
+      }
+      
+      const finalItemDuration = itemDuration || 0;
+      totalDuration += finalItemDuration;
+      itemDurations.push({ itemId: item._id, duration: finalItemDuration });
+      
+      // Add transition duration
+      if (item.transitions && item.transitions.duration) {
+        totalDuration += item.transitions.duration;
+        winston.debug(`Added transition duration:`, {
+          service: 'playlist-model',
+          playlistId: this._id,
+          itemId: item._id,
+          transitionDuration: item.transitions.duration
+        });
+      }
     }
+    
+    // Add pause between items
+    let pauseDuration = 0;
+    if (this.settings && this.settings.pauseBetweenItems && this.items.length > 1) {
+      pauseDuration = this.settings.pauseBetweenItems * (this.items.length - 1);
+      totalDuration += pauseDuration;
+      winston.debug('Added pause between items:', {
+        service: 'playlist-model',
+        playlistId: this._id,
+        pauseBetweenItems: this.settings.pauseBetweenItems,
+        totalPauseDuration: pauseDuration
+      });
+    }
+    
+    this.totalDuration = Math.round(totalDuration * 100) / 100; // Round to 2 decimal places
+    this.totalItems = this.items.length;
+    
+    winston.debug('calculateTotals completed:', {
+      service: 'playlist-model',
+      playlistId: this._id,
+      totalDuration: this.totalDuration,
+      totalItems: this.totalItems,
+      itemDurations,
+      pauseDuration
+    });
+    
+  } catch (error) {
+    winston.error('calculateTotals failed:', {
+      service: 'playlist-model',
+      playlistId: this._id,
+      error: error.message,
+      stack: error.stack
+    });
+    
+    // Set safe defaults on error
+    this.totalDuration = 0;
+    this.totalItems = this.items?.length || 0;
+    
+    throw error;
   }
-  
-  // Add pause between items
-  if (this.settings && this.settings.pauseBetweenItems && this.items.length > 1) {
-    totalDuration += this.settings.pauseBetweenItems * (this.items.length - 1);
-  }
-  
-  this.totalDuration = Math.round(totalDuration * 100) / 100; // Round to 2 decimal places
-  this.totalItems = this.items.length;
 };
 
 playlistSchema.methods.addMediaItem = function(mediaId, options = {}) {

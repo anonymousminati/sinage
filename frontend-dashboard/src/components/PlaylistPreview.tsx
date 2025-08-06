@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 import { Card, CardContent } from "./ui/card";
@@ -29,24 +29,33 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 
-interface PlaylistItem {
-  id: string;
-  name: string;
-  type: 'image' | 'video' | 'other';
-  duration?: number;
-  thumbnailUrl: string;
-  fileUrl: string;
-}
+// Import types from the main types file
+import type { Playlist as PlaylistType, PlaylistItem as PlaylistItemType, MediaItem } from '../types';
 
-interface Playlist {
-  id: string;
-  name: string;
-  items: PlaylistItem[];
-  totalDuration: number;
+// Helper function to safely extract media data from playlist item
+function extractMediaFromItem(item: PlaylistItemType): MediaItem | null {
+  if (!item) return null;
+  
+  // First try: populated mediaId (backend populates this directly)
+  if (typeof item.mediaId === 'object' && item.mediaId !== null) {
+    return item.mediaId as MediaItem;
+  }
+  
+  // Second try: media property (fallback)
+  if (item.media && typeof item.media === 'object') {
+    return item.media;
+  }
+  
+  // Third try: if mediaId is an object but not detected by typeof check
+  if (item.mediaId && typeof item.mediaId !== 'string' && typeof item.mediaId !== 'undefined') {
+    return item.mediaId as MediaItem;
+  }
+  
+  return null;
 }
 
 interface PlaylistPreviewProps {
-  playlist: Playlist | null;
+  playlist: PlaylistType | null;
   isOpen: boolean;
   onClose: () => void;
   autoPlay?: boolean;
@@ -88,12 +97,46 @@ export function PlaylistPreview({
   const videoRef = useRef<HTMLVideoElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const currentIndexRef = useRef(currentItemIndex);
 
   const currentItem = playlist?.items[currentItemIndex];
+  const currentMedia = extractMediaFromItem(currentItem);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    currentIndexRef.current = currentItemIndex;
+  }, [currentItemIndex]);
+  
+  // Enhanced debugging for current media access
+  useEffect(() => {
+    if (currentItem) {
+      console.log(`🎵 PlaylistPreview - Current Item Analysis:`, {
+        itemIndex: currentItemIndex,
+        rawItem: currentItem,
+        mediaIdType: typeof currentItem.mediaId,
+        mediaIdValue: currentItem.mediaId,
+        mediaProperty: currentItem.media,
+        extractedMedia: currentMedia,
+        hasMedia: !!currentMedia,
+        mediaType: currentMedia?.type,
+        mediaName: currentMedia?.originalName,
+        mediaUrl: currentMedia?.secureUrl || currentMedia?.url,
+        // Additional debug info
+        mediaKeys: currentMedia ? Object.keys(currentMedia) : [],
+        itemKeys: Object.keys(currentItem),
+        // Test different extraction methods
+        directMediaId: currentItem.mediaId,
+        directMedia: currentItem.media,
+        typeofMediaId: typeof currentItem.mediaId,
+        isMediaIdObject: typeof currentItem.mediaId === 'object',
+        mediaIdConstructor: currentItem.mediaId?.constructor?.name
+      });
+    }
+  }, [currentItem, currentItemIndex, currentMedia]);
 
   // Enhanced playback logic with speed control
   useEffect(() => {
-    if (!isPlaying || !currentItem) {
+    if (!isPlaying || !playlist?.items?.length) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -101,25 +144,46 @@ export function PlaylistPreview({
       return;
     }
 
-    const itemDuration = currentItem.duration || 0;
     const intervalDuration = 100; // Update every 100ms for smoother progress
-    const progressIncrement = (intervalDuration / 1000) * settings.speed * (100 / itemDuration);
     
     intervalRef.current = setInterval(() => {
+      // Use ref to get current index to avoid stale closures
+      const currentIndex = currentIndexRef.current;
+      const currentItem = playlist?.items[currentIndex];
+      if (!currentItem) return;
+      
+      const currentMedia = extractMediaFromItem(currentItem);
+      const itemDuration = currentItem.duration || currentMedia?.duration || currentMedia?.videoDuration || 0;
+      
+      if (itemDuration <= 0) return;
+      
+      const progressIncrement = (intervalDuration / 1000) * settings.speed * (100 / itemDuration);
+      
       setProgress(prev => {
         const newProgress = prev + progressIncrement;
         
         if (newProgress >= 100) {
           // Move to next item or loop
+          const currentIndex = currentIndexRef.current;
+          console.log('🎵 Progress completed, advancing...', {
+            currentIndex,
+            totalItems: playlist?.items.length,
+            autoAdvance: settings.autoAdvance,
+            hasNext: currentIndex < (playlist?.items.length || 0) - 1
+          });
+          
           if (settings.autoAdvance) {
-            if (currentItemIndex < (playlist?.items.length || 0) - 1) {
-              setCurrentItemIndex(prev => prev + 1);
-              return 0;
+            if (currentIndex < (playlist?.items.length || 0) - 1) {
+              console.log('🎵 Moving to next item:', currentIndex + 1);
+              setCurrentItemIndex(currentIndex + 1);
+              return 0; // Reset progress
             } else if (settings.loop) {
+              console.log('🎵 Looping back to start');
               setCurrentItemIndex(0);
               return 0;
             } else {
               // End of playlist
+              console.log('🎵 End of playlist reached');
               setIsPlaying(false);
               return 100;
             }
@@ -132,6 +196,7 @@ export function PlaylistPreview({
         return newProgress;
       });
       
+      // Update time tracking
       setCurrentTime(prev => {
         const newTime = prev + (intervalDuration / 1000) * settings.speed;
         return Math.min(newTime, itemDuration);
@@ -149,26 +214,81 @@ export function PlaylistPreview({
         intervalRef.current = null;
       }
     };
-  }, [isPlaying, currentItem, currentItemIndex, playlist, settings.speed, settings.autoAdvance, settings.loop]);
+  }, [isPlaying, playlist, settings.speed, settings.autoAdvance, settings.loop]);
 
   // Reset progress when item changes
   useEffect(() => {
+    console.log('🎵 Current item changed:', {
+      index: currentItemIndex,
+      itemId: currentItem?.id,
+      mediaName: currentMedia?.originalName,
+      itemDuration: currentItem?.duration,
+      mediaDuration: currentMedia?.duration,
+      videoDuration: currentMedia?.videoDuration
+    });
+    
     if (currentItem) {
-      setTimeRemaining(currentItem.duration || 0);
+      setTimeRemaining(currentItem.duration || currentMedia?.duration || currentMedia?.videoDuration || 0);
       setCurrentTime(0);
       setProgress(0);
     }
-  }, [currentItemIndex, currentItem]);
+  }, [currentItemIndex, currentItem, currentMedia]);
+
+  // Video playback control - sync video element with playback state
+  useEffect(() => {
+    if (videoRef.current && currentMedia?.type === 'video') {
+      const video = videoRef.current;
+      
+      // Set volume and muted state
+      video.volume = settings.volume;
+      video.muted = settings.muted;
+      
+      if (isPlaying) {
+        video.play().catch(err => {
+          console.error('Failed to play video:', err);
+        });
+      } else {
+        video.pause();
+      }
+    }
+  }, [isPlaying, currentMedia, settings.volume, settings.muted]);
+
+  // Video seeking - sync video time with progress
+  useEffect(() => {
+    if (videoRef.current && currentMedia?.type === 'video') {
+      const video = videoRef.current;
+      const itemDuration = currentItem?.duration || currentMedia?.duration || currentMedia?.videoDuration || 0;
+      
+      if (itemDuration > 0) {
+        const newTime = (progress / 100) * itemDuration;
+        
+        // Only update video time if there's a significant difference to avoid constant updates
+        if (Math.abs(video.currentTime - newTime) > 0.5) {
+          video.currentTime = newTime;
+        }
+      }
+    }
+  }, [progress, currentMedia, currentItem]);
 
   // Reset state when dialog opens/closes
   useEffect(() => {
     if (isOpen) {
+      console.log('🎵 Dialog opened, playlist items:', playlist?.items?.map((item, index) => ({
+        index,
+        id: item.id,
+        mediaName: extractMediaFromItem(item)?.originalName,
+        duration: item.duration,
+        order: item.order
+      })));
+      
       setCurrentItemIndex(0);
       setProgress(0);
       setCurrentTime(0);
       setIsPlaying(autoPlay);
       if (playlist?.items[0]) {
-        setTimeRemaining(playlist.items[0].duration || 0);
+        const firstItem = playlist.items[0];
+        const firstMedia = extractMediaFromItem(firstItem);
+        setTimeRemaining(firstItem.duration || firstMedia?.duration || firstMedia?.videoDuration || 0);
       }
     } else {
       setIsPlaying(false);
@@ -227,7 +347,9 @@ export function PlaylistPreview({
     setCurrentTime(0);
     setCurrentItemIndex(0);
     if (playlist?.items[0]) {
-      setTimeRemaining(playlist.items[0].duration || 0);
+      const firstItem = playlist.items[0];
+      const firstMedia = extractMediaFromItem(firstItem);
+      setTimeRemaining(firstItem.duration || firstMedia?.duration || firstMedia?.videoDuration || 0);
     }
   }, [playlist]);
 
@@ -251,7 +373,7 @@ export function PlaylistPreview({
     if (!currentItem) return;
     
     const seekProgress = newProgress[0];
-    const itemDuration = currentItem.duration || 0;
+    const itemDuration = currentItem.duration || currentMedia?.duration || currentMedia?.videoDuration || 0;
     const newTime = (seekProgress / 100) * itemDuration;
     
     setProgress(seekProgress);
@@ -264,7 +386,9 @@ export function PlaylistPreview({
     setProgress(0);
     setCurrentTime(0);
     if (playlist?.items[index]) {
-      setTimeRemaining(playlist.items[index].duration || 0);
+      const selectedItem = playlist.items[index];
+      const selectedMedia = extractMediaFromItem(selectedItem);
+      setTimeRemaining(selectedItem.duration || selectedMedia?.duration || selectedMedia?.videoDuration || 0);
     }
   }, [playlist]);
 
@@ -307,13 +431,18 @@ export function PlaylistPreview({
       >
         <DialogHeader className="p-6 pb-0">
           <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-3">
-              <Monitor className="h-5 w-5" />
-              Preview: {playlist.name}
-              <Badge variant="outline" className="ml-2">
-                {playlist.items.length} items
-              </Badge>
-            </DialogTitle>
+            <div>
+              <DialogTitle className="flex items-center gap-3">
+                <Monitor className="h-5 w-5" />
+                Preview: {playlist.name}
+                <Badge variant="outline" className="ml-2">
+                  {playlist.items.length} items
+                </Badge>
+              </DialogTitle>
+              <DialogDescription>
+                Preview your playlist content and media items
+              </DialogDescription>
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -402,29 +531,54 @@ export function PlaylistPreview({
               )}>
                 {currentItem ? (
                   <>
-                    {currentItem.type === 'image' ? (
+                    {/* Debug info - remove in production */}
+                    {process.env.NODE_ENV === 'development' && (
+                      <div className="absolute top-16 left-4 bg-black/75 text-white px-2 py-1 rounded text-xs">
+                        <p>Item: {currentItem?.id}</p>
+                        <p>Media: {currentMedia?.originalName}</p>
+                        <p>Type: {currentMedia?.type}</p>
+                        <p>URL: {currentMedia?.secureUrl ? 'secure' : currentMedia?.url ? 'regular' : 'missing'}</p>
+                      </div>
+                    )}
+                    {currentMedia?.type === 'image' && (currentMedia?.secureUrl || currentMedia?.url) ? (
                       <img
-                        src={currentItem.fileUrl}
-                        alt={currentItem.name}
+                        src={currentMedia.secureUrl || currentMedia.url}
+                        alt={currentMedia?.originalName || 'Media item'}
                         className="w-full h-full object-contain"
+                        onError={(e) => {
+                          console.error('Failed to load image:', currentMedia?.secureUrl || currentMedia?.url);
+                        }}
                       />
-                    ) : currentItem.type === 'video' ? (
+                    ) : currentMedia?.type === 'video' && (currentMedia?.secureUrl || currentMedia?.url) ? (
                       <video
-                        src={currentItem.fileUrl}
+                        ref={videoRef}
+                        src={currentMedia.secureUrl || currentMedia.url}
                         className="w-full h-full object-contain"
-                        muted
+                        muted={settings.muted}
                         loop={false}
+                        autoPlay={false}
+                        controls={false}
+                        playsInline
+                        onError={(e) => {
+                          console.error('Failed to load video:', currentMedia?.secureUrl || currentMedia?.url);
+                        }}
+                        onLoadedData={() => {
+                          console.log('Video loaded:', currentMedia?.originalName);
+                        }}
                       />
                     ) : (
                       <div className="text-white text-center">
-                        <p className="text-lg font-medium">{currentItem.name}</p>
-                        <p className="text-sm opacity-75">Preview not available</p>
+                        <p className="text-lg font-medium">{currentMedia?.originalName || 'Unknown Media'}</p>
+                        <p className="text-sm opacity-75">Preview not available for this media type</p>
+                        {currentMedia && (
+                          <p className="text-xs opacity-50 mt-2">Type: {currentMedia.type}</p>
+                        )}
                       </div>
                     )}
                     
                     {/* Overlay Info */}
                     <div className="absolute top-4 left-4 bg-black/75 text-white px-3 py-1 rounded">
-                      <p className="text-sm font-medium">{currentItem.name}</p>
+                      <p className="text-sm font-medium">{currentMedia?.originalName || 'Unknown Media'}</p>
                     </div>
                     
                     <div className="absolute top-4 right-4 bg-black/75 text-white px-3 py-1 rounded">
@@ -439,6 +593,7 @@ export function PlaylistPreview({
                 ) : (
                   <div className="text-white text-center">
                     <p className="text-lg">No content in playlist</p>
+                    <p className="text-sm opacity-75 mt-2">Add media items to preview playlist content</p>
                   </div>
                 )}
               </div>
@@ -492,20 +647,43 @@ export function PlaylistPreview({
                       index === currentItemIndex ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/50'
                     }`}
                   >
-                    <div className="w-8 h-8 rounded border overflow-hidden bg-muted">
-                      <img
-                        src={item.thumbnailUrl}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-8 h-8 rounded border overflow-hidden bg-muted flex items-center justify-center">
+                      {(() => {
+                        const mediaItem = extractMediaFromItem(item);
+                        const mediaUrl = mediaItem?.secureUrl || mediaItem?.url;
+                        if (mediaUrl) {
+                          return (
+                            <img
+                              src={mediaUrl}
+                              alt={mediaItem?.originalName || 'Media item'}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Im0xNSAxMi0zLTMtNiA2VjdoMTJ2OGgtM1oiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+';
+                              }}
+                            />
+                          );
+                        } else {
+                          // Show placeholder icon when no media URL
+                          return (
+                            <Image className="h-4 w-4 text-muted-foreground" />
+                          );
+                        }
+                      })()}
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatTime(item.duration || 0)}
-                      </p>
-                    </div>
+                      {(() => {
+                        const mediaItem = extractMediaFromItem(item);
+                        return (
+                          <>
+                            <p className="text-sm font-medium truncate">{mediaItem?.originalName || 'Unknown Media'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatTime(item.duration || mediaItem?.duration || mediaItem?.videoDuration || 0)}
+                            </p>
+                          </>
+                        );
+                      })()
+                    }</div>
                     
                     {index === currentItemIndex && (
                       <div className="w-2 h-2 bg-primary rounded-full" />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -30,7 +30,29 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { toast } from "sonner";
-import type { Playlist, ScreenAssignment } from "../types";
+import type { Playlist, ScreenAssignment, PlaylistItem, MediaItem } from "../types";
+
+// Helper function to safely extract media data from playlist item
+function extractMediaFromItem(item: PlaylistItem): MediaItem | null {
+  if (!item) return null;
+  
+  // First try: populated mediaId (backend populates this directly)
+  if (typeof item.mediaId === 'object' && item.mediaId !== null) {
+    return item.mediaId as MediaItem;
+  }
+  
+  // Second try: media property (fallback)
+  if (item.media && typeof item.media === 'object') {
+    return item.media;
+  }
+  
+  // Third try: if mediaId is an object but not detected by typeof check
+  if (item.mediaId && typeof item.mediaId !== 'string' && typeof item.mediaId !== 'undefined') {
+    return item.mediaId as MediaItem;
+  }
+  
+  return null;
+}
 
 interface Screen {
   id: string;
@@ -316,6 +338,9 @@ export function PlaylistAssignment({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Assign Playlist: {playlist.name}</DialogTitle>
+          <DialogDescription>
+            Select screens to assign this playlist to for display
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 overflow-y-auto max-h-[70vh]">
@@ -359,6 +384,99 @@ export function PlaylistAssignment({
                   >
                     Unassign from All Screens
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Playlist Content Preview */}
+          {playlist && playlist.items && playlist.items.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Playlist Content</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {playlist.items.map((item, index) => {
+                    // Use the robust helper function to extract media
+                    const media = extractMediaFromItem(item);
+                    
+                    // Enhanced debugging - log all possible media access patterns
+                    console.log(`🎵 PlaylistAssignment - Item ${index} - Full Analysis:`, {
+                      rawItem: item,
+                      mediaIdType: typeof item.mediaId,
+                      mediaIdValue: item.mediaId,
+                      mediaProperty: item.media,
+                      extractedMedia: media,
+                      hasMedia: !!media,
+                      mediaType: media?.type,
+                      mediaName: media?.originalName,
+                      mediaUrl: media?.secureUrl || media?.url,
+                      // Additional debug info
+                      mediaKeys: media ? Object.keys(media) : [],
+                      itemKeys: Object.keys(item),
+                      // Test different extraction methods
+                      directMediaId: item.mediaId,
+                      directMedia: item.media,
+                      typeofMediaId: typeof item.mediaId,
+                      isMediaIdObject: typeof item.mediaId === 'object',
+                      mediaIdConstructor: item.mediaId?.constructor?.name
+                    });
+                    
+                    return (
+                      <div key={item.id || index} className="flex items-center gap-3 p-2 border rounded-lg">
+                        <div className="w-8 h-8 rounded border overflow-hidden bg-muted flex items-center justify-center">
+                          {media?.secureUrl || media?.url ? (
+                            <img
+                              src={media.secureUrl || media.url}
+                              alt={media.originalName || 'Media item'}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Im0xNSAxMi0zLTMtNiA2VjdoMTJ2OGgtM1oiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+';
+                              }}
+                            />
+                          ) : (
+                            <div className="text-xs text-muted-foreground">
+                              {media?.type === 'video' ? '🎬' : media?.type === 'image' ? '🖼️' : '📁'}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {media?.originalName || `Item ${index + 1}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.duration || media?.duration || media?.videoDuration || 0}s • {media?.type || 'unknown'}
+                          </p>
+                        </div>
+                        
+                        <Badge variant="outline" className="text-xs">
+                          #{index + 1}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 pt-2 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    {playlist.items.length} item{playlist.items.length !== 1 ? 's' : ''} • 
+                    {playlist.totalDuration || 0}s total duration
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {playlist && (!playlist.items || playlist.items.length === 0) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Playlist Content</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-6 text-muted-foreground">
+                  <p>This playlist is empty</p>
+                  <p className="text-sm mt-1">Add media items to the playlist first</p>
                 </div>
               </CardContent>
             </Card>
