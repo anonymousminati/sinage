@@ -1063,9 +1063,40 @@ const removeMediaFromPlaylist = async (req, res) => {
       });
     }
 
+    // Debug: Log playlist state before removal
+    winston.debug('Playlist state before removal:', {
+      service: 'playlist',
+      playlistId: id,
+      itemId,
+      userId: req.user.id,
+      playlistItemsCount: playlist.items.length,
+      playlistItems: playlist.items.map(item => ({
+        _id: item._id.toString(),
+        order: item.order,
+        mediaId: item.mediaId
+      }))
+    });
+
     // Remove item from playlist
+    winston.debug('Attempting to remove item:', { service: 'playlist', itemId, itemIdType: typeof itemId });
     const removedItem = playlist.removeMediaItem(itemId);
+    
+    // Debug: Log playlist state after removal
+    winston.debug('Playlist state after removal:', {
+      service: 'playlist',
+      playlistId: id,
+      itemId,
+      userId: req.user.id,
+      playlistItemsCount: playlist.items.length,
+      removedItem: {
+        _id: removedItem._id.toString(),
+        mediaId: removedItem.mediaId,
+        order: removedItem.order
+      }
+    });
+    
     await playlist.save();
+    winston.debug('Playlist saved successfully after removal');
 
     winston.info('Media removed from playlist:', {
       service: 'playlist',

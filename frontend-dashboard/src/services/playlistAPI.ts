@@ -379,11 +379,36 @@ export async function addMediaToPlaylist(
 export async function removeMediaFromPlaylist(playlistId: string, itemId: string): Promise<void> {
   const url = `${API_BASE_URL}/playlists/${playlistId}/items/${itemId}`;
   
+  console.log('🔗 removeMediaFromPlaylist API call:', {
+    url,
+    method: 'DELETE',
+    playlistId,
+    itemId,
+    playlistIdType: typeof playlistId,
+    itemIdType: typeof itemId,
+    playlistIdLength: playlistId?.length,
+    itemIdLength: itemId?.length
+  });
+  
   try {
     const response = await fetchWithRetry(url, { method: 'DELETE' });
-    await processResponse(response);
+    console.log('📥 removeMediaFromPlaylist API response:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+    
+    const result = await processResponse(response);
+    console.log('✅ removeMediaFromPlaylist processed response:', result);
+    return result;
   } catch (error) {
-    console.error('Failed to remove media from playlist:', error);
+    console.error('❌ removeMediaFromPlaylist API error:', {
+      error,
+      message: error.message,
+      status: error.status,
+      response: error.response
+    });
     throw error;
   }
 }

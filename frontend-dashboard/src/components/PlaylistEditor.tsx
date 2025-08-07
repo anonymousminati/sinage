@@ -306,7 +306,20 @@ function SortablePlaylistItem({
         size="sm"
         onClick={(e) => {
           e.stopPropagation();
-          onRemove(item.id);
+          const itemId = item.id || item._id;
+          
+          console.log('🗑️ Delete button clicked for item:', { 
+            item: {
+              id: item.id,
+              _id: item._id,
+              finalId: itemId,
+              order: item.order
+            }
+          });
+          
+          console.log('🔗 Calling onRemove with itemId:', itemId);
+          onRemove(itemId);
+          console.log('✅ onRemove call completed');
         }}
         className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-600"
         title="Remove from playlist"
@@ -526,18 +539,33 @@ export function PlaylistEditor() {
     if (!currentPlaylist) return;
     
     try {
+      console.log('🗑️ Attempting to remove item from playlist:', {
+        playlistId: currentPlaylist.id,
+        itemId,
+        itemIdType: typeof itemId,
+        itemIdLength: itemId?.length,
+        isValidObjectId: itemId ? /^[0-9a-fA-F]{24}$/.test(itemId) : false,
+        selectedItem: selectedItem?.id
+      });
+      
       await removeFromPlaylist(currentPlaylist.id, itemId);
+      
+      console.log('✅ Item removed successfully from playlist');
       toast.success("Item removed from playlist");
+      
+      // Refresh the playlist to ensure UI is updated
+      console.log('🔄 Refreshing playlist after item removal...');
+      await fetchPlaylist(currentPlaylist.id, true);
       
       // Clear selection if removed item was selected
       if (selectedItem?.id === itemId) {
         setSelectedItem(null);
       }
     } catch (error) {
-      console.error('Failed to remove item:', error);
+      console.error('❌ Failed to remove item:', error);
       toast.error("Failed to remove item");
     }
-  }, [currentPlaylist, removeFromPlaylist, selectedItem]);
+  }, [currentPlaylist, removeFromPlaylist, selectedItem, fetchPlaylist]);
 
   const handleReorderItems = useCallback(async (newItems: PlaylistItem[]) => {
     if (!currentPlaylist) return;

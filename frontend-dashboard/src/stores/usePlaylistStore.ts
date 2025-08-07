@@ -729,27 +729,62 @@ export const usePlaylistStore = create<PlaylistStore>()(
 
         // Store the item for potential rollback
         const state = get();
-        const currentItems = state.playlistItems[playlistId] || [];
-        const itemToRemove = currentItems.find(item => item.id === itemId);
+        // Use currentPlaylist.items instead of playlistItems[playlistId] as they're not in sync
+        const currentItems = state.currentPlaylist?.items || [];
+        
+        console.log('🔍 Looking for item to remove:', {
+          playlistId,
+          itemId,
+          currentItemsCount: currentItems.length,
+          dataSource: 'currentPlaylist.items',
+          currentItems: currentItems.map(item => ({
+            id: item.id,
+            _id: item._id,
+            order: item.order
+          }))
+        });
+        
+        const itemToRemove = currentItems.find(item => (item.id || item._id) === itemId);
         
         if (!itemToRemove) {
+          console.error('❌ Item not found in currentItems for removal:', {
+            itemId,
+            availableItems: currentItems.map(item => ({ id: item.id, _id: item._id }))
+          });
           set((state) => ({
             operationLoading: { ...state.operationLoading, [`remove_${playlistId}_${itemId}`]: false },
             error: 'Playlist item not found'
           }));
           return;
         }
+        
+        console.log('✅ Found item to remove:', {
+          itemToRemove: {
+            id: itemToRemove.id,
+            _id: itemToRemove._id,
+            order: itemToRemove.order
+          }
+        });
 
         try {
-          // Optimistic removal
+          // Optimistic removal - update both playlistItems and currentPlaylist
+          const filteredItems = currentItems.filter(item => (item.id || item._id) !== itemId);
+          
           set((state) => ({
+            // Update both data structures to keep them in sync
             playlistItems: {
               ...state.playlistItems,
-              [playlistId]: currentItems.filter(item => item.id !== itemId)
-            }
+              [playlistId]: filteredItems
+            },
+            // Always update currentPlaylist if it matches
+            currentPlaylist: state.currentPlaylist?.id === playlistId 
+              ? { ...state.currentPlaylist, items: filteredItems }
+              : state.currentPlaylist
           }));
 
-          await removeMediaFromPlaylistAPI(playlistId, itemId);
+          console.log('🔗 Calling removeMediaFromPlaylistAPI with:', { playlistId, itemId });
+          const response = await removeMediaFromPlaylistAPI(playlistId, itemId);
+          console.log('📥 removeMediaFromPlaylistAPI response:', response);
           
           set((state) => ({
             operationLoading: { ...state.operationLoading, [`remove_${playlistId}_${itemId}`]: false }
@@ -769,12 +804,16 @@ export const usePlaylistStore = create<PlaylistStore>()(
             ? getPlaylistErrorMessage(error)
             : 'Failed to remove item from playlist';
             
-          // Rollback on error
+          // Rollback on error - restore both playlistItems and currentPlaylist
           set((state) => ({
             playlistItems: {
               ...state.playlistItems,
               [playlistId]: currentItems
             },
+            // Restore currentPlaylist if it matches
+            currentPlaylist: state.currentPlaylist?.id === playlistId 
+              ? { ...state.currentPlaylist, items: currentItems }
+              : state.currentPlaylist,
             operationLoading: { ...state.operationLoading, [`remove_${playlistId}_${itemId}`]: false },
             error: errorMessage,
           }));
